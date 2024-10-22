@@ -104,6 +104,7 @@ def executar_todas_funcoes():
     Executa o fluxo completo de coleta de links de faixas do SoundCloud.
     """
     soundcloud_link, choice = get_soundcloud_link()
+    
     filename = input("Digite o nome do arquivo que deseja salvar os links das tracks: ") + ".txt"
     driver = get_webdriver()
     driver.get(soundcloud_link)
