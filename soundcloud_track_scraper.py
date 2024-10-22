@@ -100,9 +100,12 @@ def save_track_links(filename, tracks):
             print(url)
 
 def executar_todas_funcoes():
+
     soundcloud_link = get_soundcloud_link()
+
     nome_arquivo = input("Digite o nome do arquivo que deseja salvar os links das tracks: ")
     filename = nome_arquivo + ".txt"
+    
     driver = get_webdriver()
     driver.get(soundcloud_link)
 
