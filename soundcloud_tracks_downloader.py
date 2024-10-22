@@ -1,5 +1,6 @@
 import yt_dlp
 import os
+from soundcloud_track_scraper import executar_todas_funcoes
 
 # Caminho da pasta onde os arquivos serão salvos
 output_folder = 'musicas'
