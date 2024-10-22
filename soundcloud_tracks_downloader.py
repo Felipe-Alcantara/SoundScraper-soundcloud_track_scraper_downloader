@@ -10,7 +10,7 @@ if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
 # Ler os URLs do arquivo
-with open('links_musicas.txt', 'r', encoding='utf-8') as f:
+with open('Faixas populares.txt', 'r', encoding='utf-8') as f:
     urls = [line.strip() for line in f if line.strip()]
 
 # Opções de download
