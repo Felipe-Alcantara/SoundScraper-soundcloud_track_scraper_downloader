@@ -4,10 +4,7 @@ from selenium.webdriver.common.by import By
 import time
 
 # Configurações iniciais para a rolagem
-
 scroll_pause_time = 4  # Tempo de espera após cada scroll (ajuste se necessário)
-num_tracks = 0 # Número de tracks
-attempts = 0 # Tentativas
 max_attempts = 5  # Número máximo de tentativas sem novas faixas serem carregadas
 
 def get_webdriver():
@@ -58,14 +55,9 @@ def get_soundcloud_link():
         except ValueError as ve:  # Captura a exceção e imprime a mensagem correta
             print(f"Erro: {ve}. Por favor, insira um link válido.")
 
-try:
-    driver = get_webdriver()
-
-    # Acessar a página de faixas do usuário
-    driver.get(input("Insira o link do perfil do SoundCloud: "))
-
-    # Esperar um pouco para a página carregar
-    time.sleep(5)
+def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts):
+    num_tracks = 0 # Número de tracks
+    attempts = 0 # Tentativas
 
     while True:
         # Rolar até o final da página
@@ -88,13 +80,18 @@ try:
         else:
             num_tracks = new_num_tracks
             attempts = 0  # Resetar o contador de tentativas
+    
+    # Retorna as faixas encontradas
+    return tracks
 
+def save_track_links(filename, tracks):
+    
     # Abrir um arquivo para salvar os links
-    with open('links_musicas.txt', 'w', encoding='utf-8') as file:
+    with open(filename, 'w', encoding='utf-8') as file: #O método "W", se o arquivo não existir, ele cria um novo arquivo.
         track_urls = set()
         for track in tracks:
             url = track.get_attribute("href")
-            if url and '/pzzs/' in url:
+            if url:  # Apenas verifica se o link não é None ou vazio
                 track_urls.add(url)
 
         # Remover duplicatas e salvar
@@ -102,6 +99,14 @@ try:
             file.write(url + '\n')
             print(url)
 
-finally:
-    # Fechar o navegador após o uso
+def executar_todas_funcoes(soundcloud_link, filename):
+    driver = get_webdriver()
+    formatted_link = get_soundcloud_link(soundcloud_link)
+    driver.get(formatted_link)
+
+    tracks = scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts)
+    save_track_links(filename, tracks)
+
     driver.quit()
+
+executar_todas_funcoes("https://soundcloud.com/pzzs/tracks", "links de teste")
