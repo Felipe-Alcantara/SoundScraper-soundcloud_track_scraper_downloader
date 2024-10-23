@@ -72,19 +72,21 @@ def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selec
     attempts = 0
 
     while attempts < max_attempts:
+        # Rola até o final da página
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(scroll_pause_time)
+        time.sleep(scroll_pause_time)  # Pausa para permitir o carregamento das novas faixas
 
         tracks = driver.find_elements(By.CSS_SELECTOR, css_selector)
         new_num_tracks = len(tracks)
         print(f"Número de faixas carregadas: {new_num_tracks}")
 
+        # Verifica se novas faixas foram carregadas
         if new_num_tracks == num_tracks:
             attempts += 1
-            print("Nenhuma nova faixa carregada, tentando novamente...")
+            print(f"Nenhuma nova faixa carregada, tentando novamente... ({attempts}/{max_attempts})")
         else:
             num_tracks = new_num_tracks
-            attempts = 0
+            attempts = 0  # Reinicia o contador de tentativas se novas faixas forem encontradas
             print("Novas faixas foram carregadas, reiniciando contagem de tentativas...")
 
     return tracks
@@ -99,8 +101,8 @@ def save_track_links(filename, tracks):
 
         for url in track_urls:
             file.write(url + '\n')
-            print(url)
-            print(f"Total de faixas coletadas: {len(track_urls)}")
+            print(f"Link salvo: {url}")
+        print(f"Total de faixas coletadas: {len(track_urls)}")
 
 
 def executar_todas_funcoes():
@@ -115,8 +117,13 @@ def executar_todas_funcoes():
 
     print(f"Você escolheu a opção {choice}")
 
+    # Seleciona o CSS Selector de acordo com a escolha do usuário
     css_selector = "li.trackList__item a.trackItem__trackTitle" if choice in ['4', '5'] else "a.soundTitle__title"
+    
+    # Coleta as faixas disponíveis na página
     tracks = scroll_and_collect_tracks(driver, SCROLL_PAUSE_TIME, MAX_ATTEMPTS, css_selector)
+    
+    # Salva os links das faixas em um arquivo
     save_track_links(filename, tracks)
 
     driver.quit()
