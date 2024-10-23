@@ -2,15 +2,17 @@ import yt_dlp
 import os
 from soundcloud_track_scraper import executar_todas_funcoes
 
+filename = executar_todas_funcoes()
+
 # Caminho da pasta onde os arquivos serão salvos
-output_folder = 'musicas'
+output_folder = input("Digite o nome da pasta onde os arquivos serão salvos: ")
 
 # Criar a pasta se ela não existir
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
 # Ler os URLs do arquivo
-with open('Faixas populares.txt', 'r', encoding='utf-8') as f:
+with open(filename, 'r', encoding='utf-8') as f:
     urls = [line.strip() for line in f if line.strip()]
 
 # Opções de download
