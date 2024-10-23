@@ -20,7 +20,6 @@ def get_webdriver():
     options.add_argument("--disable-dev-shm-usage")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-
 def get_soundcloud_link():
     """
     Obtém o link do perfil do SoundCloud e valida a escolha do usuário.
@@ -63,7 +62,6 @@ def get_soundcloud_link():
     else:
         raise ValueError("Opção inválida.")
 
-
 def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selector):
     """
     Função para rolar a página e coletar links das faixas encontradas.
@@ -91,7 +89,6 @@ def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selec
 
     return tracks
 
-
 def save_track_links(filename, tracks):
     """
     Salva os links das faixas coletadas em um arquivo.
@@ -103,7 +100,6 @@ def save_track_links(filename, tracks):
             file.write(url + '\n')
             print(f"Link salvo: {url}")
         print(f"Total de faixas coletadas: {len(track_urls)}")
-
 
 def executar_todas_funcoes():
     """
