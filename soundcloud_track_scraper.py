@@ -15,6 +15,9 @@ def get_webdriver():
     """
     print("Iniciando o WebDriver do Chrome usando webdriver-manager...")
     options = webdriver.ChromeOptions()
+    options.add_argument("--headless")  # Executa o Chrome em modo headless para não abrir a janela do navegador
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 
@@ -68,7 +71,7 @@ def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selec
     num_tracks = 0
     attempts = 0
 
-    while True:
+    while attempts < max_attempts:
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(scroll_pause_time)
 
@@ -78,11 +81,11 @@ def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selec
 
         if new_num_tracks == num_tracks:
             attempts += 1
-            if attempts >= max_attempts:
-                break
+            print("Nenhuma nova faixa carregada, tentando novamente...")
         else:
             num_tracks = new_num_tracks
             attempts = 0
+            print("Novas faixas foram carregadas, reiniciando contagem de tentativas...")
 
     return tracks
 
@@ -97,6 +100,7 @@ def save_track_links(filename, tracks):
         for url in track_urls:
             file.write(url + '\n')
             print(url)
+            print(f"Total de faixas coletadas: {len(track_urls)}")
 
 
 def executar_todas_funcoes():
