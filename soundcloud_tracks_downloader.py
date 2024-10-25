@@ -11,6 +11,27 @@ output_folder = input("Digite o nome da pasta onde os arquivos serão salvos: ")
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
+# Função para solicitar o formato
+def solicitar_formato():
+    # Solicitar ao usuário o formato desejado
+    print("Escolha o formato de áudio:")
+    print("1 - WAV (melhor qualidade)")
+    print("2 - MP3 (melhor compatibilidade e menor tamanho de arquivo)")
+    formato_escolhido = input("Digite 1 para WAV ou 2 para MP3: ")
+
+    if formato_escolhido == '1':
+        audio_format = 'wav'
+    elif formato_escolhido == '2':
+        audio_format = 'mp3'
+    else:
+        print("Opção inválida. Usando MP3 como padrão.")
+        audio_format = 'mp3'
+
+    return audio_format
+
+# Chamar a função e obter o formato escolhido
+audio_format = solicitar_formato()
+
 # Ler os URLs do arquivo
 with open(filename, 'r', encoding='utf-8') as f:
     urls = [line.strip() for line in f if line.strip()]
@@ -18,17 +39,14 @@ with open(filename, 'r', encoding='utf-8') as f:
 # Opções de download
 ydl_opts = {
     'format': 'bestaudio/best',
-    'outtmpl': os.path.join(output_folder, '%(title)s.mp3'),  # Salvar na pasta desejada
+    'outtmpl': os.path.join(output_folder, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
+    'restrictfilenames': True,
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',  # Formato de áudio desejado
-        'preferredquality': '192',  # Qualidade do áudio
+        'preferredcodec': audio_format,
     }],
-    'postprocessor_args': [
-        '-ar', '44100'  # Opcional: definir taxa de amostragem
-    ],
-    'prefer_ffmpeg': True,  # Certificar-se de usar o FFmpeg
-    # 'ffmpeg_location': 'C:/ffmpeg/bin/ffmpeg.exe',  # Atualize o caminho se necessário
+    'prefer_ffmpeg': True,
+    'ffmpeg_location': r'C:\ffmpeg\ffmpeg-7.1\bin\ffmpeg.exe',  # Caminho completo para o ffmpeg.exe
 }
 
 # Função para baixar um único URL
