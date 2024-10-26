@@ -126,7 +126,7 @@ def save_track_links(filename, tracks):
         print(f"Total de faixas coletadas: {len(track_urls)}")
 
 
-def executar_todas_funcoes():
+def soundcloud_track_scraper():
     """
     Executa o fluxo completo de coleta de links de faixas do SoundCloud.
     """

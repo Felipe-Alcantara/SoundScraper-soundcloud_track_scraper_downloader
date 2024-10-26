@@ -1,8 +1,8 @@
 import yt_dlp
 import os
-from soundcloud_track_scraper import executar_todas_funcoes
+from soundcloud_track_scraper import soundcloud_track_scraper
 
-filename = executar_todas_funcoes()
+filename = soundcloud_track_scraper()
 
 # Caminho da pasta onde os arquivos serão salvos
 output_folder = input("Digite o nome da pasta onde os arquivos serão salvos: ")
@@ -49,6 +49,32 @@ ydl_opts = {
     'ffmpeg_location': r'C:\ffmpeg\ffmpeg-7.1\bin\ffmpeg.exe',  # Caminho completo para o ffmpeg.exe
 }
 
+# Função para corrigir o nome dos arquivos, removendo "NA" e corrigindo formatação
+def corrigir_nome_arquivo(output_folder):
+    for filename in os.listdir(output_folder):
+        # Cria uma nova variável para armazenar o nome atualizado
+        novo_nome = filename
+        
+        # Verifica se o arquivo contém "NA" no nome e substitui por uma string vazia
+        if "NA -" in novo_nome:
+            novo_nome = novo_nome.replace("NA - ", "")
+        
+        # Substitui "_" por espaço
+        if "_" in novo_nome:
+            novo_nome = novo_nome.replace("_", " ")
+        
+        # Substitui "_-_" por "-"
+        if "_-_" in novo_nome:
+            novo_nome = novo_nome.replace("_-_", "-")
+        
+        # Se o nome foi alterado, renomeia o arquivo
+        if novo_nome != filename:
+            try:
+                os.rename(os.path.join(output_folder, filename), os.path.join(output_folder, novo_nome))
+                print(f"Nome atualizado: {novo_nome}")
+            except FileNotFoundError as e:
+                print(f"Erro ao renomear {filename}: {e}")
+
 # Função para baixar um único URL
 def download_url(url):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -59,5 +85,8 @@ for url in urls:
     try:
         print(f"Baixando: {url}")
         download_url(url)
+        # Corrigir os nomes dos arquivos baixados
+        corrigir_nome_arquivo(output_folder)
+
     except Exception as e:
         print(f"Erro ao baixar {url}: {e}")
