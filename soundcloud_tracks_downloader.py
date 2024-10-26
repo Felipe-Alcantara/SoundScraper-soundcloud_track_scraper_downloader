@@ -2,6 +2,24 @@ import yt_dlp
 import os
 from soundcloud_track_scraper import soundcloud_track_scraper
 
+# Classe personalizada para adicionar metadados ao info_dict
+class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
+    def run(self, info):
+        # Modifica o info_dict com os metadados desejados
+        info['title'] = info.get('title', '')
+        info['artist'] = info.get('uploader', '')
+        info['album'] = info.get('album', '')  # Se disponível
+        info['genre'] = info.get('genre', '')  # Se disponível
+        info['date'] = info.get('upload_date', '')  # Formato YYYYMMDD
+        info['comment'] = 'Baixado com código teste'
+
+        # Se quiser formatar a data para outro formato (ex: DD/MM/YYYY)
+        if info['date']:
+            from datetime import datetime
+            info['date'] = datetime.strptime(info['date'], '%Y%m%d').strftime('%d/%m/%Y')
+
+        return [], info
+
 filename = soundcloud_track_scraper()
 
 # Caminho da pasta onde os arquivos serão salvos
@@ -41,10 +59,23 @@ ydl_opts = {
     'format': 'bestaudio/best',
     'outtmpl': os.path.join(output_folder, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
     'restrictfilenames': True,
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': audio_format,
-    }],
+    'postprocessors': [
+        {
+            # Extrai o melhor áudio e converte para o formato desejado
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': audio_format,
+        },
+        {
+            # Incorpora metadados usando FFmpeg
+            'key': 'FFmpegMetadata',
+            'add_metadata': True,
+        },
+        {
+            # Embute a imagem da capa no arquivo de áudio
+            'key': 'EmbedThumbnail',
+        },
+    ],
+    'writethumbnail': True,  # Baixa a miniatura para embutir
     'prefer_ffmpeg': True,
     'ffmpeg_location': r'C:\ffmpeg\ffmpeg-7.1\bin\ffmpeg.exe',  # Caminho completo para o ffmpeg.exe
 }
@@ -78,6 +109,10 @@ def corrigir_nome_arquivo(output_folder):
 # Função para baixar um único URL
 def download_url(url):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # Adiciona o postprocessor personalizado para modificar os metadados
+        ydl.add_post_processor(AddCustomMetadataPP(), when='pre_process')
+
+        # Baixa e processa o vídeo
         ydl.download([url])
 
 # Processar cada URL
