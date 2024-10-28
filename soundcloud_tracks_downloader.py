@@ -33,12 +33,12 @@ if not os.path.exists(output_folder):
 def solicitar_formato():
     # Solicitar ao usuário o formato desejado
     print("Escolha o formato de áudio:")
-    print("1 - WAV (melhor qualidade)")
-    print("2 - MP3 (melhor compatibilidade e menor tamanho de arquivo)")
-    formato_escolhido = input("Digite 1 para WAV ou 2 para MP3: ")
+    print("1 - FLAC (Sem perdas mas com menor compatibilidade)")
+    print("2 - MP3 (Melhor compatibilidade e menor tamanho de arquivo)")
+    formato_escolhido = input("Digite 1 para FLAC ou 2 para MP3: ")
 
     if formato_escolhido == '1':
-        audio_format = 'wav'
+        audio_format = 'flac'
     elif formato_escolhido == '2':
         audio_format = 'mp3'
     else:
