@@ -5,6 +5,9 @@ from soundcloud_track_scraper import soundcloud_track_scraper
 # Classe personalizada para adicionar metadados ao info_dict
 class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
     def run(self, info):
+        print(" ")
+        print("Adicionando metadados personalizados ao info_dict")
+        print(" ")
         # Modifica o info_dict com os metadados desejados
         info['title'] = info.get('title', '')
         info['artist'] = info.get('uploader', '')
@@ -23,19 +26,29 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
 filename = soundcloud_track_scraper()
 
 # Caminho da pasta onde os arquivos serão salvos
+print(" ")
 output_folder = input("Digite o nome da pasta onde os arquivos serão salvos: ")
+print(" ")
 
 # Criar a pasta se ela não existir
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
+    print(" ")
+    print(f"Pasta criada: {output_folder}")
+    print(" ")
 
 # Função para solicitar o formato
 def solicitar_formato():
     # Solicitar ao usuário o formato desejado
+    print(" ")
     print("Escolha o formato de áudio:")
+    print(" ")
     print("1 - FLAC (Sem perdas mas com menor compatibilidade)")
+    print(" ")
     print("2 - MP3 (Melhor compatibilidade e menor tamanho de arquivo)")
+    print(" ")
     formato_escolhido = input("Digite 1 para FLAC ou 2 para MP3: ")
+    print(" ")
 
     if formato_escolhido == '1':
         audio_format = 'flac'
@@ -45,6 +58,7 @@ def solicitar_formato():
         print("Opção inválida. Usando MP3 como padrão.")
         audio_format = 'mp3'
 
+    print(f"Formato escolhido: {audio_format}")
     return audio_format
 
 # Chamar a função e obter o formato escolhido
@@ -53,6 +67,9 @@ audio_format = solicitar_formato()
 # Ler os URLs do arquivo
 with open(filename, 'r', encoding='utf-8') as f:
     urls = [line.strip() for line in f if line.strip()]
+    print(" ")
+    print(f"Total de URLs carregados: {len(urls)}")
+    print(" ")
 
 # Definir o postprocessador FFmpegExtractAudio com base no formato escolhido
 ffmpeg_extract_audio = {
@@ -91,43 +108,63 @@ def corrigir_nome_arquivo(output_folder):
     for filename in os.listdir(output_folder):
         # Cria uma nova variável para armazenar o nome atualizado
         novo_nome = filename
-        
+
         # Verifica se o arquivo contém "NA" no nome e substitui por uma string vazia
         if "NA -" in novo_nome:
             novo_nome = novo_nome.replace("NA - ", "")
-        
+
         # Substitui "_" por espaço
         if "_" in novo_nome:
             novo_nome = novo_nome.replace("_", " ")
-        
+
         # Substitui "_-_" por "-"
         if "_-_" in novo_nome:
             novo_nome = novo_nome.replace("_-_", "-")
-        
+
         # Se o nome foi alterado, renomeia o arquivo
         if novo_nome != filename:
             try:
                 os.rename(os.path.join(output_folder, filename), os.path.join(output_folder, novo_nome))
+                print(" ")
                 print(f"Nome atualizado: {novo_nome}")
+                print(" ")
             except FileNotFoundError as e:
+                print(" ")
                 print(f"Erro ao renomear {filename}: {e}")
+                print(" ")
 
 # Função para baixar um único URL
-def download_url(url):
+def download_url(url, index, total):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         # Adiciona o postprocessor personalizado para modificar os metadados
         ydl.add_post_processor(AddCustomMetadataPP(), when='pre_process')
 
         # Baixa e processa o vídeo
-        ydl.download([url])
+        try:
+            print(" ")
+            print(f"Baixando link {index}/{total}")
+            print(" ")
+            ydl.download([url])
+            print(" ")
+            print(f"Baixado link {index}/{total}")
+            print(" ")
+        except Exception as e:
+            print(" ")
+            print(f"Erro ao baixar {url}: {e}")
+            print(" ")
 
 # Processar cada URL
-for url in urls:
+total_urls = len(urls)
+for index, url in enumerate(urls, start=1):
     try:
-        print(f"Baixando: {url}")
-        download_url(url)
+        download_url(url, index, total_urls)
         # Corrigir os nomes dos arquivos baixados
         corrigir_nome_arquivo(output_folder)
-
     except Exception as e:
-        print(f"Erro ao baixar {url}: {e}")
+        print(" ")
+        print(f"Erro ao processar {url}: {e}")
+        print(" ")
+
+print(" ")
+print("Processo concluído!")
+print(" ")
