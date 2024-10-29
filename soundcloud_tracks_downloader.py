@@ -11,7 +11,7 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         info['album'] = info.get('album', '')  # Se disponível
         info['genre'] = info.get('genre', '')  # Se disponível
         info['date'] = info.get('upload_date', '')  # Formato YYYYMMDD
-        info['comment'] = 'Baixado com código teste'
+        info['comment'] = 'Baixado com SOUNDSCRAPER'
 
         # Se quiser formatar a data para outro formato (ex: DD/MM/YYYY)
         if info['date']:
@@ -54,17 +54,23 @@ audio_format = solicitar_formato()
 with open(filename, 'r', encoding='utf-8') as f:
     urls = [line.strip() for line in f if line.strip()]
 
+# Definir o postprocessador FFmpegExtractAudio com base no formato escolhido
+ffmpeg_extract_audio = {
+    'key': 'FFmpegExtractAudio',
+    'preferredcodec': audio_format,
+}
+
+# Se o formato for MP3, adicionar 'preferredquality'
+if audio_format == 'mp3':
+    ffmpeg_extract_audio['preferredquality'] = '320'
+
 # Opções de download
 ydl_opts = {
     'format': 'bestaudio/best',
     'outtmpl': os.path.join(output_folder, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
     'restrictfilenames': True,
     'postprocessors': [
-        {
-            # Extrai o melhor áudio e converte para o formato desejado
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': audio_format,
-        },
+        ffmpeg_extract_audio,
         {
             # Incorpora metadados usando FFmpeg
             'key': 'FFmpegMetadata',
