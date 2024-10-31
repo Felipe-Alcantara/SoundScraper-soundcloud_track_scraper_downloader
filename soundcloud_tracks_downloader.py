@@ -1,5 +1,7 @@
 import yt_dlp
 import os
+import sys
+import subprocess
 from soundcloud_track_scraper import soundcloud_track_scraper
 
 # Classe personalizada para adicionar metadados ao info_dict
@@ -81,6 +83,18 @@ ffmpeg_extract_audio = {
 if audio_format == 'mp3':
     ffmpeg_extract_audio['preferredquality'] = '320'
 
+# Verifica se o script está rodando em um ambiente "congelado" (após ser convertido para exe)
+if getattr(sys, 'frozen', False):
+    # Obtém o diretório temporário do executável
+    bundle_dir = sys._MEIPASS
+
+    # Define o caminho para o executável do FFmpeg dentro do diretório do bundle
+    ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
+else:
+    # Se não estiver congelado, assumimos que o FFmpeg está no PATH
+    ffmpeg_path = 'ffmpeg'
+
+
 # Opções de download
 ydl_opts = {
     'format': 'bestaudio/best',
@@ -100,7 +114,7 @@ ydl_opts = {
     ],
     'writethumbnail': True,  # Baixa a miniatura para embutir
     'prefer_ffmpeg': True,
-    'ffmpeg_location': r'C:\ffmpeg\ffmpeg-7.1\bin\ffmpeg.exe',  # Caminho completo para o ffmpeg.exe
+    'ffmpeg_location': ffmpeg_path,  # Caminho completo para o ffmpeg.exe
 }
 
 # Função para corrigir o nome dos arquivos, removendo "NA" e corrigindo formatação
