@@ -29,23 +29,31 @@ def get_soundcloud_link():
     # Solicita o link do perfil do usuário e remove partes desnecessárias do URL
     user_input = input("Insira o link do perfil do SoundCloud: ").strip()
     user_input = user_input.replace('http://', '').replace('https://', '').rstrip('/')
+    print("")
     print(f"Link fornecido: {user_input}")
+    print("")
 
     # Valida se o link parece ser do SoundCloud
     if not user_input.startswith("soundcloud.com"):
+        print("")
         raise ValueError("O link inserido não parece ser do SoundCloud.")
 
     # Extrai a URL base e verifica se o link contém o nome do artista
     base_url = user_input.split("?")[0]
     path_parts = base_url.split("/")
+    print("")
     print(f"URL base: {base_url}, partes do caminho: {path_parts}")
+    print("")
 
     if len(path_parts) < 2 or not path_parts[1]:
+        print("")
         raise ValueError("O link deve conter o nome do artista.")
 
     # Monta a URL do artista
     artist_url = f"https://{path_parts[0]}/{path_parts[1]}"
+    print("")
     print(f"URL do artista montada: {artist_url}")
+    print("")
 
     # Apresenta opções ao usuário sobre o que ele deseja puxar do perfil
     print("O que você deseja puxar deste perfil?")
@@ -55,10 +63,37 @@ def get_soundcloud_link():
     print("4: Álbuns")  # Funcional
     print("5: Playlists")  # Funcional
     print("6: Republicações")
+    print("7: Curtidas")
+    print("")
 
-    # Solicita a escolha do usuário
-    choice = input("Escolha uma opção (1-6): ").strip()
+    valid_choices = ["1", "2", "3", "4", "5", "6", "7"]
+    
+    # Loop para garantir que o usuário insira uma opção válida
+    while True:
+
+        # Solicita a escolha do usuário
+        print("")
+        choice = input("Escolha uma opção (1-7): ").strip()
+        print("")
+
+        try:
+            if choice in valid_choices:
+                print(f"Opção escolhida: {choice}")
+                print("")
+                print("Validando opção...")
+                print("")
+                print("Opção válida!")
+                print("")
+                break  # Sai do loop se a opção for válida
+            
+            else:print("Opção inválida. Por favor, escolha uma opção válida (1-7).")    
+
+        except ValueError:
+            print("Entrada inválida. Por favor, insira um número entre 1 e 7.")
+
+    print("")
     print(f"Opção escolhida: {choice}")
+    print("")
 
     # Define a URL de acordo com a escolha do usuário
     if choice == '3':
@@ -74,6 +109,8 @@ def get_soundcloud_link():
         set_list = input("Insira o link do Álbum/Playlist: ").strip()
         print(f"Link do álbum/playlist fornecido: {set_list}")
         return set_list, choice
+    elif choice == "7":
+        return artist_url + "/likes", choice
     else:
         raise ValueError("Opção inválida.")
 
@@ -134,7 +171,7 @@ def soundcloud_track_scraper():
     soundcloud_link, choice = get_soundcloud_link()
     
     # Solicita o nome do arquivo para salvar os links
-    filename = input("Digite o nome do arquivo que deseja salvar os links das tracks: ") + ".txt"
+    filename = input("Digite o nome do arquivo em que deseja salvar os links das tracks: ") + ".txt"
     print(f"Nome do arquivo fornecido: {filename}")
     driver = get_webdriver()  # Inicializa o WebDriver
     print(f"Navegando até o link do perfil do SoundCloud: {soundcloud_link}")

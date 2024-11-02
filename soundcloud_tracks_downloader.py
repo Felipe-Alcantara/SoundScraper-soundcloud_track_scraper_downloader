@@ -57,10 +57,14 @@ def solicitar_formato():
     elif formato_escolhido == '2':
         audio_format = 'mp3'
     else:
-        print("Opção inválida. Usando MP3 como padrão.")
+        print("")
+        print("Opção inválida. Usando MP3 como padrão...")
+        print("")
         audio_format = 'mp3'
 
+    print("")
     print(f"Formato escolhido: {audio_format}")
+    print("")
     return audio_format
 
 # Chamar a função e obter o formato escolhido
