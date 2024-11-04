@@ -4,6 +4,9 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.action_chains import ActionChains
 import time
+from selenium.webdriver.chrome.options import Options
+import os
+import sys
 
 # Configurações iniciais para a rolagem
 SCROLL_PAUSE_TIME = 4  # Tempo de espera após cada scroll (ajuste se necessário)
@@ -11,15 +14,27 @@ MAX_ATTEMPTS = 5  # Número máximo de tentativas sem novas faixas serem carrega
 
 def get_webdriver():
     """
-    Inicializa o WebDriver do Chrome usando o webdriver-manager.
+    Inicializa o WebDriver do Chromium portátil usando o webdriver-manager.
     """
-    print("Iniciando o WebDriver do Chrome usando webdriver-manager...")
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Executa o Chrome em modo headless para não abrir a janela do navegador
-    options.add_argument("--no-sandbox")  # Necessário para ambientes de conteinerização
-    options.add_argument("--disable-dev-shm-usage")  # Evita problemas de memória compartilhada
+    print("Iniciando o WebDriver com webdriver-manager...")
+
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    
+    # Corrigir o caminho do Chrome-bin para quando estiver dentro de um .exe
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS  # Quando compilado, os arquivos são extraídos para essa pasta temporária
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    options.binary_location = os.path.join(base_path, 'Chrome-bin', 'chrome.exe')
+
+    service = Service(ChromeDriverManager().install())
+
     print("Configurações do WebDriver definidas com sucesso.")
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    return webdriver.Chrome(service=service, options=options)
 
 
 def get_soundcloud_link():

@@ -5,7 +5,7 @@ a = Analysis(
     ['soundcloud_tracks_downloader.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:/ffmpeg/ffmpeg-7.1', 'ffmpeg')],
+    datas=[('C:/ffmpeg/ffmpeg-7.1', 'ffmpeg'), ('C:/Users/Felipe/Desktop/Programação/Scripts python/Meus projetos em python/SoundScraper/SoundScraper/Chrome-bin', 'Chrome-bin')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
