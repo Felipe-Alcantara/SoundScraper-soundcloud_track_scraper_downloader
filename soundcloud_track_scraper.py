@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.action_chains import ActionChains
+import subprocess
 import time
 from selenium.webdriver.chrome.options import Options
 import os
@@ -11,6 +11,13 @@ import sys
 # Configurações iniciais para a rolagem
 SCROLL_PAUSE_TIME = 4  # Tempo de espera após cada scroll (ajuste se necessário)
 MAX_ATTEMPTS = 5  # Número máximo de tentativas sem novas faixas serem carregadas
+
+def get_selenium_version():
+    try:
+        import selenium
+        print(f"Versão do Selenium: {selenium.__version__}")
+    except ImportError:
+        print("O Selenium não está instalado.")
 
 def get_webdriver():
     """
@@ -22,6 +29,7 @@ def get_webdriver():
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument('--enable-unsafe-swiftshader')
     
     # Corrigir o caminho do Chrome-bin para quando estiver dentro de um .exe
     if getattr(sys, 'frozen', False):
@@ -31,7 +39,7 @@ def get_webdriver():
 
     options.binary_location = os.path.join(base_path, 'Chrome-bin', 'chrome.exe')
 
-    service = Service(ChromeDriverManager().install())
+    service = Service(chromedriver_path = r"C:\Users\Felipe\.wdm\drivers\chromedriver\win64\130.0.6723.91\chromedriver-win32\chromedriver.exe") # Isso no meu PC né, atualize para o caminho no seu pc caso você vá usar pelo código fonte
 
     print("Configurações do WebDriver definidas com sucesso.")
     return webdriver.Chrome(service=service, options=options)
@@ -188,6 +196,9 @@ def soundcloud_track_scraper():
     # Solicita o nome do arquivo para salvar os links
     filename = input("Digite o nome do arquivo em que deseja salvar os links das tracks: ") + ".txt"
     print(f"Nome do arquivo fornecido: {filename}")
+
+    get_selenium_version()
+
     driver = get_webdriver()  # Inicializa o WebDriver
     print(f"Navegando até o link do perfil do SoundCloud: {soundcloud_link}")
     driver.get(soundcloud_link)  # Navega até o link do perfil do SoundCloud
