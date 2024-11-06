@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['C:\\Users\\Felipe\\Desktop\\Programação\\Scripts python\\Meus projetos em python\\SoundScraper\\SoundScraper\\Ícone\\sound_scraper_logo.ico'],
 )
