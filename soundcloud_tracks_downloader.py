@@ -12,7 +12,7 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         print(" ")
         # Modifica o info_dict com os metadados desejados
         info['title'] = info.get('title', '')
-        info['artist'] = info.get('uploader', '')
+        info['artist'] = info.get('artist', info['uploader'])  # Se não houver 'artist', use 'uploader'
         info['album'] = info.get('album', '')  # Se disponível
         info['genre'] = info.get('genre', '')  # Se disponível
         info['date'] = info.get('upload_date', '')  # Formato YYYYMMDD

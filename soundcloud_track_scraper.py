@@ -64,16 +64,19 @@ def get_soundcloud_link():
             user_input = user_input.replace('http://', '').replace('https://', '').rstrip('/')
 
             if not user_input:
-                raise ValueError("Nenhum link foi inserido.")
+                raise ValueError("Nenhum link foi inserido. Por favor, insira o link do perfil do SoundCloud.")
 
             print("")
             print(f"Link fornecido: {user_input}")
             print("")
 
-            # Valida se o link parece ser do SoundCloud
+            # Verifica se o link começa com "soundcloud.com"
             if not user_input.startswith("soundcloud.com"):
-                print("")
-                raise ValueError("O link inserido não parece ser do SoundCloud.")
+                raise ValueError(
+                    "O link inserido não parece ser do SoundCloud. "
+                    "Certifique-se de que o link seja do tipo 'https://soundcloud.com/...' "
+                    "e tente novamente."
+                )
 
             # Extrai a URL base e verifica se o link contém o nome do artista
             base_url = user_input.split("?")[0]
@@ -83,9 +86,13 @@ def get_soundcloud_link():
             print(f"URL base: {base_url}, partes do caminho: {path_parts}")
             print("")
 
+            # Verifica se a URL contém o suficiente para determinar um perfil de artista
             if len(path_parts) < 2 or not path_parts[1]:
                 print("")
-                raise ValueError("O link deve conter o nome do artista.")
+                raise ValueError(
+                    "O link fornecido deve conter o nome do artista. "
+                    "Exemplo de link válido: 'https://soundcloud.com/nome-do-artista'."
+                )
 
             # Monta a URL do artista
             artist_url = f"https://{path_parts[0]}/{path_parts[1]}"
@@ -138,7 +145,7 @@ def get_user_choice(artist_url):
             print("")
             break  # Sai do loop se a opção for válida
             
-        else:print("Opção inválida. Por favor, escolha uma opção válida (1-7).")    
+        else:print(f"A opção '{choice}' não é válida. Por favor, escolha uma das seguintes opções: {', '.join(valid_choices)}.") 
 
     print("")
     print(f"Opção escolhida: {choice}")
@@ -222,8 +229,10 @@ def save_track_links(filename, tracks):
             print("")
             print(f"Link salvo: {url}")
             print("")
+
+        # Como já sabemos que haverá faixas, podemos apenas mostrar a quantidade coletada
         print("")
-        print(f"Total de faixas coletadas: {len(track_urls)}")
+        print(f"Total de faixas coletadas e salvas: {len(track_urls)}")
         print("")
 
 
