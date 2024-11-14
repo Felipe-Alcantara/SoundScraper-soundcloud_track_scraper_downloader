@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 from soundcloud_track_scraper import soundcloud_track_scraper
+import re
 
 # Classe personalizada para adicionar metadados ao info_dict
 class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
@@ -12,7 +13,7 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         print(" ")
         # Modifica o info_dict com os metadados desejados
         info['title'] = info.get('title', '')
-        info['artist'] = info.get('artist', info['uploader'])  # Se não houver 'artist', use 'uploader'
+        info['artist'] = info.get('artist', '') or info.get('uploader', '')  # Usa artist se disponível, senão usa uploader
         info['album'] = info.get('album', '')  # Se disponível
         info['genre'] = info.get('genre', '')  # Se disponível
         info['date'] = info.get('upload_date', '')  # Formato YYYYMMDD
@@ -95,9 +96,10 @@ if getattr(sys, 'frozen', False):
     # Define o caminho para o executável do FFmpeg dentro do diretório do bundle
     ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
 else:
-    # Se não estiver congelado, assumimos que o FFmpeg está no PATH
-    ffmpeg_path = 'ffmpeg'
-
+    # Se não estiver congelado, este é um caminho "hardcoded" (especificamente para meu PC).
+    # Se der erro, certifique-se de substituir o caminho abaixo pelo local correto do ffmpeg no seu sistema
+    # ou adicione o ffmpeg ao PATH do sistema para que ele possa ser encontrado automaticamente.
+    ffmpeg_path = r'C:\ffmpeg\ffmpeg-7.1\bin\ffmpeg.exe'
 
 # Opções de download
 ydl_opts = {
@@ -127,17 +129,10 @@ def corrigir_nome_arquivo(output_folder):
         # Cria uma nova variável para armazenar o nome atualizado
         novo_nome = filename
 
-        # Verifica se o arquivo contém "NA" no nome e substitui por uma string vazia
-        if "NA -" in novo_nome:
-            novo_nome = novo_nome.replace("NA - ", "")
-
-        # Substitui "_" por espaço
-        if "_" in novo_nome:
-            novo_nome = novo_nome.replace("_", " ")
-
-        # Substitui "_-_" por "-"
-        if "_-_" in novo_nome:
-            novo_nome = novo_nome.replace("_-_", "-")
+        # Substituir múltiplos padrões usando expressões regulares
+        novo_nome = re.sub(r'NA - ', '', novo_nome)  # Remove "NA -"
+        novo_nome = re.sub(r'_', ' ', novo_nome)     # Substitui "_" por espaço
+        novo_nome = re.sub(r'_-_', '-', novo_nome)   # Substitui "_-_" por "-"
 
         # Se o nome foi alterado, renomeia o arquivo
         if novo_nome != filename:
