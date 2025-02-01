@@ -99,7 +99,7 @@ else:
     # Se não estiver congelado, este é um caminho "hardcoded" (especificamente para meu PC).
     # Se der erro, certifique-se de substituir o caminho abaixo pelo local correto do ffmpeg no seu sistema
     # ou adicione o ffmpeg ao PATH do sistema para que ele possa ser encontrado automaticamente.
-    ffmpeg_path = r'C:\ffmpeg\ffmpeg-7.1\bin\ffmpeg.exe'
+    ffmpeg_path = r'C:/Programação/Dependências/FFMPEG/ffmpeg-2024-11-21-git-f298507323-full_build/bin/ffmpeg.exe'
 
 # Opções de download
 ydl_opts = {
