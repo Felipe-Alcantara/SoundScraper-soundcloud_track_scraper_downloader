@@ -371,17 +371,53 @@ def get_user_choice(artist_url):
         return artist_url + "/tracks", choice
     elif choice == '4' or choice == '5':
         # Solicita link de álbum ou playlist caso o usuário escolha álbuns ou playlists
-        set_list = input("Insira o link do Álbum/Playlist: ").strip()
+        while True:
+            set_list = input("Insira o link do Álbum/Playlist: ").strip()
+            
+            # Validação 1: não permite link vazio
+            if not set_list:
+                print("")
+                print("❌ ERRO: Você precisa fornecer um link válido do álbum/playlist!")
+                print("   Exemplo: https://soundcloud.com/artista/sets/playlist-name")
+                print("")
+                print("Por favor, tente novamente.")
+                print("")
+                continue
+            
+            # Validação 2: remove http/https e verifica se é do SoundCloud
+            clean_link = set_list.replace('http://', '').replace('https://', '').rstrip('/')
+            
+            if not clean_link.startswith("soundcloud.com"):
+                print("")
+                print("❌ ERRO: O link inserido não parece ser do SoundCloud.")
+                print("   Certifique-se de que o link seja do tipo:")
+                print("   'https://soundcloud.com/artista/sets/playlist-name'")
+                print("")
+                print("Por favor, tente novamente.")
+                print("")
+                continue
+            
+            # Validação 3: verifica se contém '/sets/' para álbuns/playlists
+            if '/sets/' not in clean_link:
+                print("")
+                print("⚠️  AVISO: O link não contém '/sets/', que geralmente indica um álbum/playlist.")
+                print("   Você digitou: " + set_list)
+                print("")
+                confirmar = input("Deseja continuar mesmo assim? (S/N, padrão=N): ").strip().upper()
+                if not confirmar:
+                    confirmar = 'N'
+                if confirmar != 'S':
+                    print("")
+                    print("Por favor, tente novamente.")
+                    print("")
+                    continue
+            
+            # Todas as validações passaram, sai do loop
+            break
         
-        # Validação: não permite link vazio
-        if not set_list:
-            print("")
-            print("❌ ERRO: Você precisa fornecer um link válido do álbum/playlist!")
-            print("   Exemplo: https://soundcloud.com/artista/sets/playlist-name")
-            print("")
-            raise ValueError("Link do álbum/playlist não pode estar vazio.")
-        
-        print(f"Link do álbum/playlist fornecido: {set_list}\n")
+        print("")
+        print(f"Link do álbum/playlist fornecido: {set_list}")
+        print("")
         return set_list, choice
     elif choice == '6':
         return artist_url + "/reposts", choice

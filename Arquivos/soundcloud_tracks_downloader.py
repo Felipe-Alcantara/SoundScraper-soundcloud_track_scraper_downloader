@@ -140,25 +140,45 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         info['artist'] = info.get('artist', '') or info.get('uploader', '')
         
         # ===== METADADOS DO SOUNDCLOUD =====
-        # Álbum / Playlist
+        # Álbum / Playlist (tenta múltiplas fontes)
+        album_name = None
         if info.get('album'):
-            info['album'] = info['album']
+            album_name = info['album']
         elif info.get('playlist'):
-            info['album'] = info['playlist']
+            album_name = info['playlist']
+        elif info.get('playlist_title'):
+            album_name = info['playlist_title']
+        
+        if album_name:
+            info['album'] = album_name
         
         # Gênero
         if info.get('genre'):
             info['genre'] = info['genre']
         
-        # Data de upload
+        # Data de upload e Ano
         if info.get('upload_date'):
-            info['date'] = info['upload_date']
-            # Formata para DD/MM/YYYY
             from datetime import datetime
             try:
-                info['date'] = datetime.strptime(info['upload_date'], '%Y%m%d').strftime('%d/%m/%Y')
-            except:
-                pass
+                # upload_date vem no formato YYYYMMDD (ex: 20181103)
+                date_obj = datetime.strptime(info['upload_date'], '%Y%m%d')
+                
+                # Define o ano separadamente
+                info['date'] = str(date_obj.year)  # Ano para o campo 'date' (usado por players)
+                
+                # Adiciona também timestamp completo se desejar
+                info['timestamp'] = date_obj.strftime('%Y-%m-%d')
+                
+            except Exception as e:
+                # Se falhar, tenta usar direto
+                info['date'] = info['upload_date'][:4] if len(info['upload_date']) >= 4 else info['upload_date']
+        
+        # Tenta extrair ano de outras fontes se não tiver upload_date
+        if not info.get('date'):
+            if info.get('release_date'):
+                info['date'] = info['release_date'][:4] if len(str(info['release_date'])) >= 4 else info['release_date']
+            elif info.get('release_year'):
+                info['date'] = str(info['release_year'])
         
         # Descrição (pode conter letra, BPM, feat, etc)
         if info.get('description'):
@@ -217,14 +237,28 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         info['website'] = 'https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader'
         info['encoder'] = 'SoundScraper v1.0'
         
-        # ===== DEBUG: Mostra metadados disponíveis (opcional) =====
-        # Descomente as linhas abaixo para ver TODOS os metadados disponíveis:
-        # print("\n" + "="*70)
-        # print("🔍 METADADOS DISPONÍVEIS:")
-        # for key, value in sorted(info.items()):
-        #     if not key.startswith('_') and not callable(value):
-        #         print(f"  {key}: {value}")
-        # print("="*70 + "\n")
+        # ===== DEBUG: Mostra metadados disponíveis =====
+        print("\n" + "="*70)
+        print("🔍 DEBUG - METADADOS CAPTURADOS DO SOUNDCLOUD:")
+        print("="*70)
+        
+        # Metadados mais importantes para debug
+        debug_keys = [
+            'title', 'artist', 'uploader', 'album', 'playlist', 'playlist_title',
+            'genre', 'upload_date', 'release_date', 'release_year', 'date', 'timestamp',
+            'description', 'tags', 'bpm', 'license', 'track_number', 'playlist_index',
+            'duration', 'webpage_url'
+        ]
+        
+        for key in debug_keys:
+            if info.get(key):
+                value = info[key]
+                # Trunca descrições longas
+                if key == 'description' and len(str(value)) > 100:
+                    value = str(value)[:100] + "..."
+                print(f"  📌 {key}: {value}")
+        
+        print("="*70 + "\n")
 
         return [], info
 
@@ -282,7 +316,9 @@ def solicitar_formato():
         formato_escolhido = '2'
         print("")
         print("ℹ️  Usando formato padrão: MP3 (320kbps)")
-    elif formato_escolhido == '1':
+    
+    # Processa a escolha
+    if formato_escolhido == '1':
         audio_format = 'flac'
         print("")
         print("✅ Formato selecionado: FLAC (Lossless)")
