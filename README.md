@@ -124,23 +124,51 @@ A ferramenta oferece uma experiência completa 🏆 para quem deseja baixar e or
 
 ## ❗ Possíveis Problemas e Soluções
 
-1. **Driver de Navegador Incompatível**: Se o WebDriver não iniciar 🚫, atualize a versão do `webdriver-manager` ou ajuste o caminho manualmente na função `get_webdriver()`. Isso é comum caso a versão do navegador esteja desatualizada ou o driver esteja incorreto.
+1. **"cannot find Chrome binary"**: Este erro significa que o Google Chrome não está instalado ou não foi encontrado. 
+   - **Solução**: Instale o Google Chrome em: https://www.google.com/chrome/
+   - O script tenta encontrar o Chrome automaticamente nos locais padrão do Windows
+   - Alternativamente, coloque uma versão portátil do Chrome na pasta `Chrome-bin` do projeto
 
-2. **Erro no Selenium**: Caso o Selenium não esteja instalado, instale com `pip install selenium`. Verifique também se todas as dependências estão configuradas corretamente ✅.
+2. **Dependências Python Faltando**: Se você receber erros sobre módulos não encontrados (selenium, yt_dlp, etc.):
+   - **Solução**: Execute o script normalmente! Ele verificará automaticamente as dependências e oferecerá instalá-las
+   - Ou instale manualmente com: `pip install -r requirements.txt`
 
-3. **Erro ao Baixar Faixas**: Certifique-se de que o link está correto e que o yt_dlp está configurado adequadamente, com FFmpeg instalado no PATH. Problemas de configuração geralmente resultam em falhas de download ⛔.
+3. **Driver de Navegador Incompatível**: Se o WebDriver não iniciar 🚫:
+   - **Solução**: O `webdriver-manager` baixa automaticamente a versão correta do ChromeDriver
+   - Se o problema persistir, delete a pasta `.wdm` em seu diretório de usuário e tente novamente
 
-4. **Problemas com o FFmpeg**: Se o download falhar devido ao FFmpeg, verifique se o caminho para o binário está correto ou se o FFmpeg está instalado e configurado 🔧. O FFmpeg é essencial para processar as faixas baixadas e incorporar as miniaturas 🖼️ e metadados 📋.
+4. **Erro ao Baixar Faixas**: Certifique-se de que o link está correto e que o yt_dlp está configurado adequadamente ⛔.
+   - **Solução**: Verifique se o link do SoundCloud está correto e acessível
+   - O FFmpeg já está incluído no repositório, não precisa instalar separadamente
+
+5. **Problemas com o FFmpeg**: O FFmpeg já vem incluído na pasta `ffmpeg/` do projeto 🔧.
+   - **Solução**: Não é necessário instalar o FFmpeg separadamente
+   - O script usa automaticamente o FFmpeg da pasta do repositório
 
 ---
 
 ## 📋 Requisitos
 
-- Python 3.6 ou superior 🐍
+### Requisitos do Sistema:
+- **Python 3.6 ou superior** 🐍
+- **Google Chrome** instalado no sistema 🌐 (obrigatório para o Selenium funcionar)
+
+### Dependências Python (instalação automática disponível):
 - Selenium 🕷️
 - yt_dlp 📥
-- FFmpeg 🎥
-- `webdriver-manager` 🔧
+- webdriver-manager 🔧
+
+### Incluído no Repositório:
+- FFmpeg 🎥 (localizado na pasta `ffmpeg/ffmpeg-8.0-essentials_build/`)
+
+⚠️ **IMPORTANTE**: O Google Chrome **DEVE** estar instalado no sistema para que o script funcione. O script tentará localizá-lo automaticamente nos seguintes locais:
+- `C:\Program Files\Google\Chrome\Application\chrome.exe`
+- `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
+- `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`
+
+Se você não tiver o Chrome instalado, baixe-o em: https://www.google.com/chrome/
+
+**Verificação Automática de Dependências**: O script verifica automaticamente se todas as dependências Python estão instaladas e oferece instalá-las caso estejam faltando. Basta executar o script e seguir as instruções na tela! ✨
 
 Esses requisitos garantem que a ferramenta funcione corretamente ✅ e que todas as funcionalidades estejam disponíveis. O FFmpeg, por exemplo, é crucial para processar as faixas baixadas 🎶, enquanto o Selenium permite a navegação automatizada 🌐.
 

@@ -1,11 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
+# Obtém o diretório base do projeto
+base_dir = os.path.dirname(os.path.abspath(SPECPATH))
 
 a = Analysis(
-    ['soundcloud_tracks_downloader.py'],
-    pathex=[],
+    [os.path.join(base_dir, 'Arquivos', 'soundcloud_tracks_downloader.py')],
+    pathex=[os.path.join(base_dir, 'Arquivos')],
     binaries=[],
-    datas=[('C:/ffmpeg/ffmpeg-7.1', 'ffmpeg'), ('C:/Users/Felipe/Desktop/Programação/Scripts python/Meus projetos em python/SoundScraper/SoundScraper/Chrome-bin', 'Chrome-bin')],
+    datas=[
+        (os.path.join(base_dir, 'Dependencias', 'ffmpeg', 'ffmpeg-8.0-essentials_build', 'bin'), os.path.join('ffmpeg', 'bin')),
+        (os.path.join(base_dir, 'Dependencias', 'Navegador', 'chrome-win64'), os.path.join('Navegador', 'chrome-win64'))
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,5 +42,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:\\Users\\Felipe\\Desktop\\Programação\\Scripts python\\Meus projetos em python\\SoundScraper\\SoundScraper\\Ícone\\sound_scraper_logo.ico'],
+    icon=[os.path.join(base_dir, 'Extra', 'Ícone', 'sound_scraper_logo.ico')] if os.path.exists(os.path.join(base_dir, 'Extra', 'Ícone', 'sound_scraper_logo.ico')) else None,
 )
