@@ -1,7 +1,7 @@
 import yt_dlp
 
-# URL do vídeo do YouTube que você deseja baixar
-url = "https://www.youtube.com/watch?v=YVfgHeOIGbY"
+# URL do arquivo que você deseja baixar
+url = ""
 
 # Configurações do yt-dlp
 ydl_opts = {
