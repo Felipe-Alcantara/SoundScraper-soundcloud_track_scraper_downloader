@@ -372,6 +372,15 @@ def get_user_choice(artist_url):
     elif choice == '4' or choice == '5':
         # Solicita link de álbum ou playlist caso o usuário escolha álbuns ou playlists
         set_list = input("Insira o link do Álbum/Playlist: ").strip()
+        
+        # Validação: não permite link vazio
+        if not set_list:
+            print("")
+            print("❌ ERRO: Você precisa fornecer um link válido do álbum/playlist!")
+            print("   Exemplo: https://soundcloud.com/artista/sets/playlist-name")
+            print("")
+            raise ValueError("Link do álbum/playlist não pode estar vazio.")
+        
         print(f"Link do álbum/playlist fornecido: {set_list}\n")
         return set_list, choice
     elif choice == '6':
