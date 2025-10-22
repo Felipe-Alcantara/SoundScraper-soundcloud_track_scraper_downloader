@@ -2,18 +2,19 @@
 
 import os
 
-# Obtém o diretório base do projeto
-base_dir = os.path.dirname(os.path.abspath(SPECPATH))
+# Obtém o diretório base do projeto (onde está o .spec)
+base_dir = os.path.dirname(os.path.abspath(SPEC))
 
 a = Analysis(
     [os.path.join(base_dir, 'Arquivos', 'soundcloud_tracks_downloader.py')],
     pathex=[os.path.join(base_dir, 'Arquivos')],
     binaries=[],
     datas=[
+        (os.path.join(base_dir, 'Arquivos', 'soundcloud_track_scraper.py'), '.'),
         (os.path.join(base_dir, 'Dependencias', 'ffmpeg', 'ffmpeg-8.0-essentials_build', 'bin'), os.path.join('ffmpeg', 'bin')),
         (os.path.join(base_dir, 'Dependencias', 'Navegador', 'chrome-win64'), os.path.join('Navegador', 'chrome-win64'))
     ],
-    hiddenimports=[],
+    hiddenimports=['soundcloud_track_scraper', 'selenium', 'yt_dlp', 'mutagen'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
