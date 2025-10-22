@@ -56,7 +56,13 @@ def check_and_install_requirements():
             print(f"     • {pkg}")
         print("")
         print("─" * 70)
-        resposta = input("\n💡 Deseja instalar automaticamente agora? (S/N): ").strip().upper()
+        resposta = input("\n💡 Deseja instalar automaticamente agora? (S/N, padrão=S): ").strip().upper()
+        
+        # Se o usuário não digitou nada, usar 'S' como padrão
+        if not resposta:
+            resposta = 'S'
+            print("")
+            print("ℹ️  Usando opção padrão: SIM")
         
         if resposta == 'S':
             print("")
@@ -85,7 +91,14 @@ def check_and_install_requirements():
             print("")
             print("⚠️  AVISO: O programa pode não funcionar sem as dependências!")
             print("")
-            continuar = input("💭 Deseja tentar continuar mesmo assim? (S/N): ").strip().upper()
+            continuar = input("💭 Deseja tentar continuar mesmo assim? (S/N, padrão=N): ").strip().upper()
+            
+            # Se o usuário não digitou nada, usar 'N' como padrão (não continuar)
+            if not continuar:
+                continuar = 'N'
+                print("")
+                print("ℹ️  Usando opção padrão: NÃO")
+            
             print("")
             return continuar == 'S'
     else:
@@ -122,27 +135,96 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         print("")
         print("📝 Adicionando metadados personalizados...")
         
-        # Metadados principais
+        # ===== METADADOS PRINCIPAIS =====
         info['title'] = info.get('title', '')
-        info['artist'] = info.get('artist', '') or info.get('uploader', '')  # Usa artist se disponível, senão usa uploader
-        info['album'] = info.get('album', '')  # Se disponível
-        info['genre'] = info.get('genre', '')  # Se disponível
-        info['date'] = info.get('upload_date', '')  # Formato YYYYMMDD
+        info['artist'] = info.get('artist', '') or info.get('uploader', '')
         
-        # Metadados personalizados do SoundScraper
-        info['comment'] = 'Downloaded by SoundScraper\nhttps://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader'
-        info['description'] = info.get('description', '')
+        # ===== METADADOS DO SOUNDCLOUD =====
+        # Álbum / Playlist
+        if info.get('album'):
+            info['album'] = info['album']
+        elif info.get('playlist'):
+            info['album'] = info['playlist']
+        
+        # Gênero
+        if info.get('genre'):
+            info['genre'] = info['genre']
+        
+        # Data de upload
+        if info.get('upload_date'):
+            info['date'] = info['upload_date']
+            # Formata para DD/MM/YYYY
+            from datetime import datetime
+            try:
+                info['date'] = datetime.strptime(info['upload_date'], '%Y%m%d').strftime('%d/%m/%Y')
+            except:
+                pass
+        
+        # Descrição (pode conter letra, BPM, feat, etc)
+        if info.get('description'):
+            info['description'] = info['description']
+            # Também adiciona na seção de comentários se for curta
+            if len(info['description']) < 500:
+                info['lyrics'] = info['description']
+        
+        # Tags do SoundCloud
+        if info.get('tags'):
+            tags = info['tags']
+            if isinstance(tags, list):
+                info['keywords'] = ', '.join(tags)
+            else:
+                info['keywords'] = str(tags)
+        
+        # BPM (se disponível nos metadados do SoundCloud)
+        if info.get('bpm'):
+            info['bpm'] = str(info['bpm'])
+        
+        # Licença
+        if info.get('license'):
+            info['copyright'] = info['license']
+        
+        # Label/Publisher
+        if info.get('publisher'):
+            info['publisher'] = info['publisher']
+        elif info.get('label'):
+            info['publisher'] = info['label']
+        
+        # Track number / Position na playlist
+        if info.get('track_number'):
+            info['track'] = str(info['track_number'])
+        elif info.get('playlist_index'):
+            info['track'] = str(info['playlist_index'])
+        
+        # Duration
+        if info.get('duration'):
+            info['length'] = str(int(info['duration'] * 1000))  # em milliseconds
+        
+        # Composer (se houver informação de featured artists)
+        if info.get('composer'):
+            info['composer'] = info['composer']
+        
+        # ===== METADADOS DO SOUNDSCRAPER =====
+        # Comentário personalizado com URL original
+        comment_parts = [
+            "Downloaded by SoundScraper",
+            f"Source: {info.get('webpage_url', 'SoundCloud')}",
+            "",
+            "GitHub: https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader"
+        ]
+        info['comment'] = '\n'.join(comment_parts)
+        
+        # Website e Encoder
         info['website'] = 'https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader'
         info['encoder'] = 'SoundScraper v1.0'
         
-        # Adiciona URL original do SoundCloud
-        if info.get('webpage_url'):
-            info['comment'] = f"Downloaded by SoundScraper\n{info['webpage_url']}\n\nGitHub: https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader"
-
-        # Se quiser formatar a data para outro formato (ex: DD/MM/YYYY)
-        if info['date']:
-            from datetime import datetime
-            info['date'] = datetime.strptime(info['date'], '%Y%m%d').strftime('%d/%m/%Y')
+        # ===== DEBUG: Mostra metadados disponíveis (opcional) =====
+        # Descomente as linhas abaixo para ver TODOS os metadados disponíveis:
+        # print("\n" + "="*70)
+        # print("🔍 METADADOS DISPONÍVEIS:")
+        # for key, value in sorted(info.items()):
+        #     if not key.startswith('_') and not callable(value):
+        #         print(f"  {key}: {value}")
+        # print("="*70 + "\n")
 
         return [], info
 
@@ -155,9 +237,16 @@ print("═" * 70)
 print("")
 print("💡 Dica: Você pode usar um nome simples como 'Musicas' ou um")
 print("   caminho completo como 'C:\\Users\\Seu Nome\\Musicas\\SoundCloud'")
+print("   Deixe em branco para usar o padrão: 'SoundCloud_Downloads'")
 print("")
-output_folder = input("📂 Digite o nome/caminho da pasta onde salvar: ")
+output_folder = input("📂 Digite o nome/caminho da pasta onde salvar: ").strip()
 print("")
+
+# Se o usuário não digitou nada, usar valor padrão
+if not output_folder:
+    output_folder = "SoundCloud_Downloads"
+    print("ℹ️  Usando pasta padrão: SoundCloud_Downloads")
+    print("")
 
 # Criar a pasta se ela não existir
 if not os.path.exists(output_folder):
@@ -186,9 +275,14 @@ def solicitar_formato():
     print("      • Compatível com qualquer dispositivo")
     print("")
     print("─" * 70)
-    formato_escolhido = input("\n💿 Digite sua escolha (1 ou 2): ").strip()
+    formato_escolhido = input("\n💿 Digite sua escolha (1 ou 2, padrão=2): ").strip()
 
-    if formato_escolhido == '1':
+    # Se o usuário não digitou nada, usar MP3 como padrão
+    if not formato_escolhido:
+        formato_escolhido = '2'
+        print("")
+        print("ℹ️  Usando formato padrão: MP3 (320kbps)")
+    elif formato_escolhido == '1':
         audio_format = 'flac'
         print("")
         print("✅ Formato selecionado: FLAC (Lossless)")
