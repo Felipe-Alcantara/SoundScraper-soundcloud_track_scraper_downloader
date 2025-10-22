@@ -26,7 +26,9 @@ def check_and_install_requirements():
     missing_packages = []
     
     print("")
-    print("🔍 Verificando dependências...")
+    print("═" * 70)
+    print("🔍  VERIFICANDO DEPENDÊNCIAS DO PYTHON")
+    print("═" * 70)
     print("")
     
     # Verifica cada pacote
@@ -36,54 +38,78 @@ def check_and_install_requirements():
         
         try:
             __import__(package_name.replace('-', '_'))
-            print(f"✅ {package_name} - instalado")
+            print(f"  ✅  {package_name:<20} → Instalado")
         except ImportError:
-            print(f"❌ {package_name} - NÃO instalado")
+            print(f"  ❌  {package_name:<20} → NÃO instalado")
             missing_packages.append(package)
     
     print("")
+    print("─" * 70)
     
     # Se houver pacotes faltando, oferece instalação
     if missing_packages:
-        print(f"⚠️  {len(missing_packages)} dependência(s) faltando!")
         print("")
-        print("Pacotes faltando:")
+        print(f"⚠️  ATENÇÃO: {len(missing_packages)} pacote(s) Python faltando!")
+        print("")
+        print("📋 Pacotes necessários:")
         for pkg in missing_packages:
-            print(f"  - {pkg}")
+            print(f"     • {pkg}")
         print("")
-        
-        resposta = input("Deseja instalar as dependências faltantes agora? (S/N): ").strip().upper()
-        print("")
+        print("─" * 70)
+        resposta = input("\n💡 Deseja instalar automaticamente agora? (S/N): ").strip().upper()
         
         if resposta == 'S':
-            print("📦 Instalando dependências...")
+            print("")
+            print("═" * 70)
+            print("📦  INSTALANDO DEPENDÊNCIAS...")
+            print("═" * 70)
             print("")
             
             try:
                 subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements_file])
                 print("")
-                print("✅ Todas as dependências foram instaladas com sucesso!")
+                print("═" * 70)
+                print("✅  SUCESSO! Todas as dependências foram instaladas!")
+                print("═" * 70)
                 print("")
                 return True
             except subprocess.CalledProcessError as e:
                 print("")
-                print(f"❌ Erro ao instalar dependências: {e}")
+                print("═" * 70)
+                print(f"❌  ERRO ao instalar dependências:")
+                print(f"    {e}")
+                print("═" * 70)
                 print("")
                 return False
         else:
-            print("⚠️  O programa pode não funcionar corretamente sem as dependências.")
             print("")
-            continuar = input("Deseja continuar mesmo assim? (S/N): ").strip().upper()
+            print("⚠️  AVISO: O programa pode não funcionar sem as dependências!")
+            print("")
+            continuar = input("💭 Deseja tentar continuar mesmo assim? (S/N): ").strip().upper()
             print("")
             return continuar == 'S'
     else:
-        print("✅ Todas as dependências estão instaladas!")
+        print("")
+        print("✅  Perfeito! Todas as dependências estão prontas!")
         print("")
         return True
 
+# Banner de boas-vindas
+print("")
+print("╔" + "═" * 68 + "╗")
+print("║" + " " * 68 + "║")
+print("║" + "  🎵  SOUNDSCRAPER - SoundCloud Downloader  🎶".center(68) + "║")
+print("║" + " " * 68 + "║")
+print("╚" + "═" * 68 + "╝")
+print("")
+
 # Verifica as dependências antes de continuar
 if not check_and_install_requirements():
-    print("❌ Programa encerrado.")
+    print("")
+    print("═" * 70)
+    print("❌  Programa encerrado devido a dependências faltantes.")
+    print("═" * 70)
+    print("")
     sys.exit(1)
 
 # Importa as dependências após verificação
@@ -93,9 +119,8 @@ from soundcloud_track_scraper import soundcloud_track_scraper
 # Classe personalizada para adicionar metadados ao info_dict
 class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
     def run(self, info):
-        print(" ")
-        print("Adicionando metadados personalizados ao info_dict")
-        print(" ")
+        print("")
+        print("📝 Adicionando metadados personalizados...")
         # Modifica o info_dict com os metadados desejados
         info['title'] = info.get('title', '')
         info['artist'] = info.get('artist', '') or info.get('uploader', '')  # Usa artist se disponível, senão usa uploader
@@ -114,42 +139,58 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
 filename = soundcloud_track_scraper()
 
 # Caminho da pasta onde os arquivos serão salvos
-print(" ")
-output_folder = input("Digite o nome da pasta onde os arquivos serão salvos: ")
-print(" ")
+print("═" * 70)
+print("📁  CONFIGURAÇÃO DA PASTA DE DESTINO")
+print("═" * 70)
+print("")
+print("💡 Dica: Você pode usar um nome simples como 'Musicas' ou um")
+print("   caminho completo como 'C:\\Users\\Seu Nome\\Musicas\\SoundCloud'")
+print("")
+output_folder = input("📂 Digite o nome/caminho da pasta onde salvar: ")
+print("")
 
 # Criar a pasta se ela não existir
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
-    print(" ")
-    print(f"Pasta criada: {output_folder}")
-    print(" ")
+    print(f"✅ Pasta criada com sucesso: {output_folder}")
+    print("")
+else:
+    print(f"📂 Usando pasta existente: {output_folder}")
+    print("")
 
 # Função para solicitar o formato
 def solicitar_formato():
     # Solicitar ao usuário o formato desejado
-    print(" ")
-    print("Escolha o formato de áudio:")
-    print(" ")
-    print("1 - FLAC (Sem perdas mas com menor compatibilidade)")
-    print(" ")
-    print("2 - MP3 (Melhor compatibilidade e menor tamanho de arquivo)")
-    print(" ")
-    formato_escolhido = input("Digite 1 para FLAC ou 2 para MP3: ")
-    print(" ")
+    print("═" * 70)
+    print("🎵  ESCOLHA O FORMATO DE ÁUDIO")
+    print("═" * 70)
+    print("")
+    print("  [1] 🎼  FLAC")
+    print("      • Qualidade máxima (sem perdas)")
+    print("      • Arquivos maiores (~30-40 MB por música)")
+    print("      • Ideal para audiófilos e arquivamento")
+    print("")
+    print("  [2] 🎧  MP3")
+    print("      • Alta qualidade (320kbps)")
+    print("      • Arquivos menores (~8-12 MB por música)")
+    print("      • Compatível com qualquer dispositivo")
+    print("")
+    print("─" * 70)
+    formato_escolhido = input("\n💿 Digite sua escolha (1 ou 2): ").strip()
 
     if formato_escolhido == '1':
         audio_format = 'flac'
+        print("")
+        print("✅ Formato selecionado: FLAC (Lossless)")
     elif formato_escolhido == '2':
         audio_format = 'mp3'
+        print("")
+        print("✅ Formato selecionado: MP3 (320kbps)")
     else:
         print("")
-        print("Opção inválida. Usando MP3 como padrão...")
-        print("")
+        print("⚠️  Opção inválida! Usando MP3 como padrão...")
         audio_format = 'mp3'
 
-    print("")
-    print(f"Formato escolhido: {audio_format}")
     print("")
     return audio_format
 
@@ -223,13 +264,9 @@ def corrigir_nome_arquivo(output_folder):
         if novo_nome != filename:
             try:
                 os.rename(os.path.join(output_folder, filename), os.path.join(output_folder, novo_nome))
-                print(" ")
-                print(f"Nome atualizado: {novo_nome}")
-                print(" ")
+                print(f"   ✏️  Arquivo renomeado: {novo_nome}")
             except FileNotFoundError as e:
-                print(" ")
-                print(f"Erro ao renomear {filename}: {e}")
-                print(" ")
+                print(f"   ⚠️  Erro ao renomear: {e}")
 
 # Função para baixar um único URL
 def download_url(url, index, total):
@@ -239,30 +276,62 @@ def download_url(url, index, total):
 
         # Baixa e processa o vídeo
         try:
-            print(" ")
-            print(f"Baixando link {index}/{total}")
-            print(" ")
+            print("")
+            print("─" * 70)
+            print(f"⬇️  BAIXANDO [{index}/{total}]")
+            print("─" * 70)
             ydl.download([url])
-            print(" ")
-            print(f"Baixado link {index}/{total}")
-            print(" ")
+            print("")
+            print(f"✅  CONCLUÍDO [{index}/{total}]")
+            print("")
         except Exception as e:
-            print(" ")
-            print(f"Erro ao baixar {url}: {e}")
-            print(" ")
+            print("")
+            print(f"❌  ERRO ao baixar música {index}/{total}")
+            print(f"    URL: {url}")
+            print(f"    Motivo: {e}")
+            print("")
+
+# Banner de início do download
+print("═" * 70)
+print("🎵  INICIANDO DOWNLOAD DAS MÚSICAS")
+print("═" * 70)
+print("")
+print(f"📊  Total de músicas na fila: {len(urls)}")
+print(f"📂  Pasta de destino: {output_folder}")
+print(f"🎼  Formato: {audio_format.upper()}")
+print("")
+print("─" * 70)
+print("")
 
 # Processar cada URL
 total_urls = len(urls)
+sucessos = 0
+erros = 0
+
 for index, url in enumerate(urls, start=1):
     try:
         download_url(url, index, total_urls)
         # Corrigir os nomes dos arquivos baixados
         corrigir_nome_arquivo(output_folder)
+        sucessos += 1
     except Exception as e:
-        print(" ")
-        print(f"Erro ao processar {url}: {e}")
-        print(" ")
+        print("")
+        print(f"❌  ERRO CRÍTICO ao processar música {index}/{total_urls}")
+        print(f"    {e}")
+        print("")
+        erros += 1
 
-print(" ")
-print("Processo concluído!")
-print(" ")
+# Relatório final
+print("")
+print("═" * 70)
+print("🎉  PROCESSO CONCLUÍDO!")
+print("═" * 70)
+print("")
+print(f"✅  Sucessos: {sucessos} música(s)")
+if erros > 0:
+    print(f"❌  Erros: {erros} música(s)")
+print(f"📂  Pasta: {output_folder}")
+print("")
+print("═" * 70)
+print("")
+print("Obrigado por usar o SoundScraper! 🎵")

@@ -26,7 +26,9 @@ def check_and_install_requirements():
     missing_packages = []
     
     print("")
-    print("🔍 Verificando dependências...")
+    print("═" * 70)
+    print("🔍  VERIFICANDO DEPENDÊNCIAS DO PYTHON")
+    print("═" * 70)
     print("")
     
     # Verifica cada pacote
@@ -36,54 +38,69 @@ def check_and_install_requirements():
         
         try:
             __import__(package_name.replace('-', '_'))
-            print(f"✅ {package_name} - instalado")
+            print(f"  ✅  {package_name:<20} → Instalado")
         except ImportError:
-            print(f"❌ {package_name} - NÃO instalado")
+            print(f"  ❌  {package_name:<20} → NÃO instalado")
             missing_packages.append(package)
     
     print("")
+    print("─" * 70)
     
     # Se houver pacotes faltando, oferece instalação
     if missing_packages:
-        print(f"⚠️  {len(missing_packages)} dependência(s) faltando!")
         print("")
-        print("Pacotes faltando:")
+        print(f"⚠️  ATENÇÃO: {len(missing_packages)} pacote(s) Python faltando!")
+        print("")
+        print("📋 Pacotes necessários:")
         for pkg in missing_packages:
-            print(f"  - {pkg}")
+            print(f"     • {pkg}")
         print("")
-        
-        resposta = input("Deseja instalar as dependências faltantes agora? (S/N): ").strip().upper()
-        print("")
+        print("─" * 70)
+        resposta = input("\n💡 Deseja instalar automaticamente agora? (S/N): ").strip().upper()
         
         if resposta == 'S':
-            print("📦 Instalando dependências...")
+            print("")
+            print("═" * 70)
+            print("📦  INSTALANDO DEPENDÊNCIAS...")
+            print("═" * 70)
             print("")
             
             try:
                 subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements_file])
                 print("")
-                print("✅ Todas as dependências foram instaladas com sucesso!")
+                print("═" * 70)
+                print("✅  SUCESSO! Todas as dependências foram instaladas!")
+                print("═" * 70)
                 print("")
                 return True
             except subprocess.CalledProcessError as e:
                 print("")
-                print(f"❌ Erro ao instalar dependências: {e}")
+                print("═" * 70)
+                print(f"❌  ERRO ao instalar dependências:")
+                print(f"    {e}")
+                print("═" * 70)
                 print("")
                 return False
         else:
-            print("⚠️  O programa pode não funcionar corretamente sem as dependências.")
             print("")
-            continuar = input("Deseja continuar mesmo assim? (S/N): ").strip().upper()
+            print("⚠️  AVISO: O programa pode não funcionar sem as dependências!")
+            print("")
+            continuar = input("💭 Deseja tentar continuar mesmo assim? (S/N): ").strip().upper()
             print("")
             return continuar == 'S'
     else:
-        print("✅ Todas as dependências estão instaladas!")
+        print("")
+        print("✅  Perfeito! Todas as dependências estão prontas!")
         print("")
         return True
 
 # Verifica as dependências antes de continuar
 if not check_and_install_requirements():
-    print("❌ Programa encerrado.")
+    print("")
+    print("═" * 70)
+    print("❌  Programa encerrado devido a dependências faltantes.")
+    print("═" * 70)
+    print("")
     sys.exit(1)
 
 # Importa as dependências após verificação
@@ -113,7 +130,11 @@ def get_webdriver():
     Inicializa o WebDriver do Chromium portátil usando o webdriver-manager.
     """
     print("")
-    print("Iniciando o WebDriver com webdriver-manager...")
+    print("═" * 70)
+    print("🌐  INICIALIZANDO NAVEGADOR")
+    print("═" * 70)
+    print("")
+    print("⚙️  Configurando Chrome em modo invisível (headless)...")
     print("")
 
     options = Options()
@@ -202,24 +223,41 @@ def get_webdriver():
 
     # Usa o ChromeDriverManager para baixar e gerenciar automaticamente o chromedriver
     try:
+        print("🔧 Baixando/atualizando ChromeDriver...")
         service = Service(ChromeDriverManager().install())
-        print("✅ ChromeDriver configurado com sucesso.")
+        print("✅ ChromeDriver configurado com sucesso!")
         print("")
     except Exception as e:
-        print(f"❌ Erro ao configurar ChromeDriver: {e}")
+        print("")
+        print("═" * 70)
+        print(f"❌ ERRO ao configurar ChromeDriver:")
+        print(f"   {e}")
+        print("═" * 70)
         print("")
         raise
 
     try:
-        return webdriver.Chrome(service=service, options=options)
+        print("🚀 Iniciando navegador...")
+        driver = webdriver.Chrome(service=service, options=options)
+        print("✅ Navegador iniciado com sucesso!")
+        print("")
+        print("─" * 70)
+        print("")
+        return driver
     except Exception as e:
         print("")
-        print(f"❌ Erro ao inicializar o WebDriver: {e}")
+        print("═" * 70)
+        print("❌ ERRO CRÍTICO ao inicializar o navegador!")
+        print("═" * 70)
+        print(f"   Detalhes: {e}")
         print("")
-        print("💡 Dicas:")
-        print("- Verifique se o Google Chrome está instalado corretamente")
-        print("- Tente reinstalar o Google Chrome")
-        print("- Execute o script como administrador")
+        print("💡 Possíveis soluções:")
+        print("   • Verifique se o Google Chrome está instalado")
+        print("   • Tente reinstalar o Google Chrome")
+        print("   • Execute o script como administrador")
+        print("   • Verifique sua conexão com a internet")
+        print("")
+        print("═" * 70)
         print("")
         raise
 
@@ -413,27 +451,64 @@ def soundcloud_track_scraper():
     """
     Executa o fluxo completo de coleta de links de faixas do SoundCloud.
     """
+    # Banner inicial
+    print("")
+    print("╔" + "═" * 68 + "╗")
+    print("║" + " " * 68 + "║")
+    print("║" + "  🎵  SOUNDSCRAPER - Link Collector  🔗".center(68) + "║")
+    print("║" + " " * 68 + "║")
+    print("╚" + "═" * 68 + "╝")
+    print("")
+    
     # Obtém o link do perfil do SoundCloud e a opção escolhida pelo usuário
     soundcloud_link = get_soundcloud_link()
     soundcloud_link, choice = get_user_choice(soundcloud_link)
     
     # Solicita o nome do arquivo para salvar os links
     print("")
-    filename = input("Digite o nome do arquivo em que deseja salvar os links das tracks: ") + ".txt"
+    print("═" * 70)
+    print("📄  CONFIGURAÇÃO DO ARQUIVO DE SAÍDA")
+    print("═" * 70)
     print("")
-    print(f"Nome do arquivo fornecido: {filename}")
+    print("💡 Dica: Escolha um nome descritivo, como 'links_artista' ou 'playlist_favoritas'")
+    print("")
+    filename = input("📝 Digite o nome do arquivo (sem extensão): ").strip()
+    if not filename:
+        filename = "soundcloud_links"
+        print(f"⚠️  Nome vazio! Usando padrão: {filename}")
+    filename += ".txt"
+    print("")
+    print(f"✅ Arquivo será salvo como: {filename}")
     print("")
 
     get_selenium_version()
 
     driver = get_webdriver()  # Inicializa o WebDriver
+    
+    print("═" * 70)
+    print("🌐  ACESSANDO SOUNDCLOUD")
+    print("═" * 70)
     print("")
-    print(f"Navegando até o link do perfil do SoundCloud: {soundcloud_link}")
+    print(f"🔗 URL: {soundcloud_link}")
+    print("⏳ Aguarde enquanto a página carrega...")
     print("")
     driver.get(soundcloud_link)  # Navega até o link do perfil do SoundCloud
-
+    print("✅ Página carregada com sucesso!")
     print("")
-    print(f"Você escolheu a opção {choice}")
+
+    # Mapeamento de opções para nomes amigáveis
+    opcoes_nomes = {
+        '1': 'Todas as Faixas',
+        '2': 'Álbuns',
+        '3': 'Playlists',
+        '4': 'Curtidas',
+        '5': 'Faixas Populares',
+        '6': 'Reposts'
+    }
+    
+    print("─" * 70)
+    print(f"📊 Modo selecionado: {opcoes_nomes.get(choice, 'Desconhecido')}")
+    print("─" * 70)
     print("")
 
     # Seleciona o CSS Selector de acordo com a escolha do usuário
@@ -446,7 +521,16 @@ def soundcloud_track_scraper():
     save_track_links(filename, tracks)
 
     driver.quit()  # Fecha o navegador
+    
     print("")
-    print(f"Processo concluído, faixas salvas em: {filename}")
+    print("═" * 70)
+    print("✅  COLETA CONCLUÍDA COM SUCESSO!")
+    print("═" * 70)
     print("")
+    print(f"📁 Links salvos em: {filename}")
+    print(f"📊 Total de faixas encontradas: {len(tracks)}")
+    print("")
+    print("═" * 70)
+    print("")
+    
     return filename  # Retorna o nome do arquivo criado
