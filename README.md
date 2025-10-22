@@ -1,10 +1,35 @@
 # SoundScraper
 
- Este projeto automatiza a coleta e download de faixas do SoundCloud utilizando Selenium para navegar pela página e yt-dlp para baixar os áudios. Ele facilita o processo de extrair links e salvar as músicas desejadas localmente de forma rápida e eficiente.
+Este projeto automatiza a coleta e download de faixas do SoundCloud utilizando Selenium para navegar pela página e yt-dlp para baixar os áudios. Ele facilita o processo de extrair links e salvar as músicas desejadas localmente de forma rápida e eficiente.
 
 ---
 
 # 🎵 SoundCloud Music Downloader 🎶
+
+## ⚡ Início Rápido
+
+### Para Iniciantes (3 passos simples):
+
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader.git
+   cd SoundScraper-soundcloud_track_scraper_downloader
+   ```
+
+2. **Instale o Google Chrome** (se ainda não tiver):
+   - 🌐 Baixe em: https://www.google.com/chrome/
+   - OU baixe o Chrome portátil: https://storage.googleapis.com/chrome-for-testing-public/114.0.5708.0/win64/chrome-win64.zip
+   - Extraia o Chrome portátil para: `Dependencias/Navegador/`
+
+3. **Execute o programa:**
+   ```bash
+   cd Arquivos
+   python soundcloud_tracks_downloader.py
+   ```
+   
+   ✨ **Pronto!** O script verificará e instalará automaticamente todas as dependências Python necessárias.
+
+---
 
 ## 📖 Índice
 
