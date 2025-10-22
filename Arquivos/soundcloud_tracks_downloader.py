@@ -121,13 +121,23 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
     def run(self, info):
         print("")
         print("📝 Adicionando metadados personalizados...")
-        # Modifica o info_dict com os metadados desejados
+        
+        # Metadados principais
         info['title'] = info.get('title', '')
         info['artist'] = info.get('artist', '') or info.get('uploader', '')  # Usa artist se disponível, senão usa uploader
         info['album'] = info.get('album', '')  # Se disponível
         info['genre'] = info.get('genre', '')  # Se disponível
         info['date'] = info.get('upload_date', '')  # Formato YYYYMMDD
-        info['comment'] = 'Baixado com SOUNDSCRAPER'
+        
+        # Metadados personalizados do SoundScraper
+        info['comment'] = 'Downloaded by SoundScraper\nhttps://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader'
+        info['description'] = info.get('description', '')
+        info['website'] = 'https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader'
+        info['encoder'] = 'SoundScraper v1.0'
+        
+        # Adiciona URL original do SoundCloud
+        if info.get('webpage_url'):
+            info['comment'] = f"Downloaded by SoundScraper\n{info['webpage_url']}\n\nGitHub: https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader"
 
         # Se quiser formatar a data para outro formato (ex: DD/MM/YYYY)
         if info['date']:
