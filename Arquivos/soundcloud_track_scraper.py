@@ -3,6 +3,7 @@ import time
 import os
 import sys
 
+
 # Função para verificar e instalar dependências
 def check_and_install_requirements():
     """
@@ -94,172 +95,25 @@ def check_and_install_requirements():
         print("")
         return True
 
-# Verifica as dependências antes de continuar
-if not check_and_install_requirements():
-    print("")
-    print("═" * 70)
-    print("❌  Programa encerrado devido a dependências faltantes.")
-    print("═" * 70)
-    print("")
-    sys.exit(1)
+# Verifica as dependências apenas se executado diretamente (não quando importado pelo downloader)
+if __name__ == '__main__':
+    if not check_and_install_requirements():
+        print("")
+        print("═" * 70)
+        print("❌  Programa encerrado devido a dependências faltantes.")
+        print("═" * 70)
+        print("")
+        sys.exit(1)
 
 # Importa as dependências após verificação
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.options import Options
+
+# Importa o módulo de navegador (toda lógica de Chrome/HTTP fica lá)
+from browser_handler import get_webdriver, get_selenium_version, http_fallback_scraper
 
 # Configurações iniciais para a rolagem
 SCROLL_PAUSE_TIME = 4  # Tempo de espera após cada scroll (ajuste se necessário)
 MAX_ATTEMPTS = 5  # Número máximo de tentativas sem novas faixas serem carregadas
-
-def get_selenium_version():
-    try:
-        import selenium
-        print("")
-        print(f"Versão do Selenium: {selenium.__version__}")
-        print("")
-    except ImportError:
-        print("")
-        print("O Selenium não está instalado.")
-        print("")
-
-def get_webdriver():
-    """
-    Inicializa o WebDriver do Chromium portátil usando o webdriver-manager.
-    """
-    print("")
-    print("═" * 70)
-    print("🌐  INICIALIZANDO NAVEGADOR")
-    print("═" * 70)
-    print("")
-    print("⚙️  Configurando Chrome em modo invisível (headless)...")
-    print("")
-
-    options = Options()
-    # Modo headless - navegador não abre janela visível
-    options.add_argument("--headless=new")  # Usa o novo modo headless do Chrome
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")  # Desabilita GPU para modo headless
-    options.add_argument("--window-size=1920,1080")  # Define tamanho da janela virtual
-    options.add_argument("--disable-blink-features=AutomationControlled")  # Evita detecção de automação
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])  # Remove logs desnecessários
-    options.add_experimental_option('useAutomationExtension', False)  # Desabilita extensão de automação
-    
-    # Configurar o caminho do Chrome se disponível
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS  # Quando compilado, os arquivos são extraídos para essa pasta temporária
-    else:
-        # Vai para a pasta pai (raiz do projeto)
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        base_path = os.path.dirname(script_dir)
-
-    # Lista de possíveis locais do Chrome no projeto (agora em Dependencias/Navegador/)
-    portable_chrome_paths = [
-        os.path.join(base_path, 'Dependencias', 'Navegador', 'chrome-win64', 'chrome.exe'),
-        os.path.join(base_path, 'Navegador', 'chrome-win64', 'chrome.exe'),
-        os.path.join(base_path, 'Chrome-bin', 'chrome.exe'),
-    ]
-    
-    # Tenta encontrar o Chrome
-    chrome_found = False
-    
-    # Primeiro, procura Chrome portátil no projeto
-    for chrome_path in portable_chrome_paths:
-        if os.path.exists(chrome_path):
-            options.binary_location = chrome_path
-            chrome_found = True
-            print(f"✅ Chrome portátil encontrado: {chrome_path}")
-            print("")
-            break
-    
-    # Se não encontrou no projeto, procura Chrome instalado no sistema
-    if not chrome_found:
-        system_chrome_paths = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
-            os.path.expandvars(r"%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"),
-            os.path.expandvars(r"%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"),
-        ]
-        
-        for chrome_path in system_chrome_paths:
-            if os.path.exists(chrome_path):
-                options.binary_location = chrome_path
-                chrome_found = True
-                print(f"✅ Chrome do sistema encontrado: {chrome_path}")
-                print("")
-                break
-        
-        if not chrome_found:
-            print("❌ ERRO: Google Chrome não foi encontrado!")
-            print("")
-            print("Locais verificados no projeto:")
-            for path in portable_chrome_paths:
-                print(f"  - {path}")
-            print("")
-            print("📋 Soluções possíveis:")
-            print("")
-            print("OPÇÃO 1 (Recomendada) - Instalar Chrome no Sistema:")
-            print("  → https://www.google.com/chrome/")
-            print("")
-            print("OPÇÃO 2 - Baixar Chrome Portátil:")
-            print("  1. Baixe: https://storage.googleapis.com/chrome-for-testing-public/114.0.5708.0/win64/chrome-win64.zip")
-            print("  2. Extraia para: Dependencias/Navegador/")
-            print("  3. Certifique-se que existe: Dependencias/Navegador/chrome-win64/chrome.exe")
-            print("")
-            print("📖 Leia mais em: Dependencias/README.md")
-            print("")
-            
-            continuar = input("Deseja tentar continuar mesmo assim? (S/N): ").strip().upper()
-            if continuar != 'S':
-                print("")
-                print("Programa encerrado.")
-                sys.exit(1)
-            print("")
-
-    # Usa o ChromeDriverManager para baixar e gerenciar automaticamente o chromedriver
-    try:
-        print("🔧 Baixando/atualizando ChromeDriver...")
-        service = Service(ChromeDriverManager().install())
-        print("✅ ChromeDriver configurado com sucesso!")
-        print("")
-    except Exception as e:
-        print("")
-        print("═" * 70)
-        print(f"❌ ERRO ao configurar ChromeDriver:")
-        print(f"   {e}")
-        print("═" * 70)
-        print("")
-        raise
-
-    try:
-        print("🚀 Iniciando navegador...")
-        driver = webdriver.Chrome(service=service, options=options)
-        print("✅ Navegador iniciado com sucesso!")
-        print("")
-        print("─" * 70)
-        print("")
-        return driver
-    except Exception as e:
-        print("")
-        print("═" * 70)
-        print("❌ ERRO CRÍTICO ao inicializar o navegador!")
-        print("═" * 70)
-        print(f"   Detalhes: {e}")
-        print("")
-        print("💡 Possíveis soluções:")
-        print("   • Verifique se o Google Chrome está instalado")
-        print("   • Tente reinstalar o Google Chrome")
-        print("   • Execute o script como administrador")
-        print("   • Verifique sua conexão com a internet")
-        print("")
-        print("═" * 70)
-        print("")
-        raise
 
 
 def get_soundcloud_link():
@@ -495,6 +349,8 @@ def save_track_links(filename, tracks):
 def soundcloud_track_scraper():
     """
     Executa o fluxo completo de coleta de links de faixas do SoundCloud.
+    Tenta usar Selenium primeiro; se falhar (ex: EXE sem navegador), 
+    usa fallback via HTTP/API.
     """
     # Banner inicial
     print("")
@@ -526,46 +382,108 @@ def soundcloud_track_scraper():
     print(f"✅ Arquivo será salvo como: {filename}")
     print("")
 
-    get_selenium_version()
-
-    driver = get_webdriver()  # Inicializa o WebDriver
+    # ══════════════════════════════════════════════════════════════
+    #  Tenta usar Selenium; se falhar, usa fallback HTTP
+    # ══════════════════════════════════════════════════════════════
     
-    print("═" * 70)
-    print("🌐  ACESSANDO SOUNDCLOUD")
-    print("═" * 70)
-    print("")
-    print(f"🔗 URL: {soundcloud_link}")
-    print("⏳ Aguarde enquanto a página carrega...")
-    print("")
-    driver.get(soundcloud_link)  # Navega até o link do perfil do SoundCloud
-    print("✅ Página carregada com sucesso!")
-    print("")
-
-    # Mapeamento de opções para nomes amigáveis
-    opcoes_nomes = {
-        '1': 'Todas as Faixas',
-        '2': 'Álbuns',
-        '3': 'Playlists',
-        '4': 'Curtidas',
-        '5': 'Faixas Populares',
-        '6': 'Reposts'
-    }
+    selenium_ok = False
+    driver = None
     
-    print("─" * 70)
-    print(f"📊 Modo selecionado: {opcoes_nomes.get(choice, 'Desconhecido')}")
-    print("─" * 70)
-    print("")
+    try:
+        get_selenium_version()
+        driver = get_webdriver()  # Inicializa o WebDriver
+        selenium_ok = True
+    except SystemExit:
+        # get_webdriver chama sys.exit(1) quando falha — interceptamos aqui
+        selenium_ok = False
+        print("")
+        print("═" * 70)
+        print("🔄  Selenium falhou! Tentando método alternativo (HTTP)...")
+        print("═" * 70)
+        print("")
+    except Exception as e:
+        selenium_ok = False
+        print("")
+        print(f"⚠️  Erro ao inicializar Selenium: {e}")
+        print("")
+        print("═" * 70)
+        print("🔄  Tentando método alternativo (HTTP)...")
+        print("═" * 70)
+        print("")
 
-    # Seleciona o CSS Selector de acordo com a escolha do usuário
-    css_selector = "li.trackList__item a.trackItem__trackTitle" if choice in ['4', '5'] else "a.soundTitle__title"
-    
-    # Coleta as faixas disponíveis na página
-    tracks = scroll_and_collect_tracks(driver, SCROLL_PAUSE_TIME, MAX_ATTEMPTS, css_selector)
-    
-    # Salva os links das faixas em um arquivo
-    save_track_links(filename, tracks)
+    if selenium_ok and driver:
+        # ── CAMINHO 1: Selenium (método principal) ──
+        try:
+            print("═" * 70)
+            print("🌐  ACESSANDO SOUNDCLOUD (via Selenium)")
+            print("═" * 70)
+            print("")
+            print(f"🔗 URL: {soundcloud_link}")
+            print("⏳ Aguarde enquanto a página carrega...")
+            print("")
+            driver.get(soundcloud_link)
+            print("✅ Página carregada com sucesso!")
+            print("")
 
-    driver.quit()  # Fecha o navegador
+            opcoes_nomes = {
+                '1': 'Todas as Faixas',
+                '2': 'Faixas Populares',
+                '3': 'Faixas',
+                '4': 'Álbuns',
+                '5': 'Playlists',
+                '6': 'Republicações',
+                '7': 'Curtidas'
+            }
+            
+            print("─" * 70)
+            print(f"📊 Modo selecionado: {opcoes_nomes.get(choice, 'Desconhecido')}")
+            print("─" * 70)
+            print("")
+
+            css_selector = "li.trackList__item a.trackItem__trackTitle" if choice in ['4', '5'] else "a.soundTitle__title"
+            tracks = scroll_and_collect_tracks(driver, SCROLL_PAUSE_TIME, MAX_ATTEMPTS, css_selector)
+            save_track_links(filename, tracks)
+            driver.quit()
+        except Exception as e:
+            print(f"⚠️  Erro durante scraping com Selenium: {e}")
+            print("🔄  Tentando fallback HTTP...")
+            if driver:
+                try:
+                    driver.quit()
+                except:
+                    pass
+            # Cai para o fallback HTTP
+            track_urls = http_fallback_scraper(soundcloud_link, choice)
+            if track_urls:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    for url in track_urls:
+                        f.write(url + '\n')
+                print(f"\n✅ {len(track_urls)} links salvos via HTTP em: {filename}")
+            else:
+                print("\n❌ Não foi possível coletar links por nenhum método!")
+                input("Pressione ENTER para encerrar...")
+                sys.exit(1)
+    else:
+        # ── CAMINHO 2: Fallback HTTP (sem Selenium) ──
+        track_urls = http_fallback_scraper(soundcloud_link, choice)
+        
+        if track_urls:
+            with open(filename, 'w', encoding='utf-8') as f:
+                for url in track_urls:
+                    f.write(url + '\n')
+            print("")
+            print(f"✅ {len(track_urls)} links salvos via HTTP em: {filename}")
+        else:
+            print("")
+            print("❌ Não foi possível coletar links!")
+            print("")
+            print("💡 Soluções possíveis:")
+            print("   1. Instale o Google Chrome para usar o modo Selenium")
+            print("   2. Verifique sua conexão com a internet")
+            print("   3. Tente novamente mais tarde")
+            print("")
+            input("Pressione ENTER para encerrar...")
+            sys.exit(1)
     
     print("")
     print("═" * 70)
@@ -573,7 +491,6 @@ def soundcloud_track_scraper():
     print("═" * 70)
     print("")
     print(f"📁 Links salvos em: {filename}")
-    print(f"📊 Total de faixas encontradas: {len(tracks)}")
     print("")
     print("═" * 70)
     print("")

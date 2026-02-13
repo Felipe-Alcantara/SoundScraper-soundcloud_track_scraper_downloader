@@ -3,6 +3,11 @@ import sys
 import subprocess
 import re
 
+# Inicializa o sistema de logging ANTES de tudo
+# Isso garante que qualquer crash será capturado e salvo em arquivo
+from crash_logger import inicializar_logger
+session_log = inicializar_logger()
+
 # Função para verificar e instalar dependências
 def check_and_install_requirements():
     """

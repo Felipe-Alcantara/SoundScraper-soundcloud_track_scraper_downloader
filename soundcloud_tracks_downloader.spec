@@ -5,16 +5,25 @@ import os
 # Obtém o diretório base do projeto (onde está o .spec)
 base_dir = os.path.dirname(os.path.abspath(SPEC))
 
+# Localiza o selenium-manager.exe automaticamente
+import importlib
+selenium_path = os.path.dirname(importlib.import_module('selenium').__file__)
+selenium_manager_src = os.path.join(selenium_path, 'webdriver', 'common', 'windows', 'selenium-manager.exe')
+
 a = Analysis(
     [os.path.join(base_dir, 'Arquivos', 'soundcloud_tracks_downloader.py')],
     pathex=[os.path.join(base_dir, 'Arquivos')],
-    binaries=[],
+    binaries=[
+        # Inclui o selenium-manager.exe para que funcione no EXE
+        (selenium_manager_src, os.path.join('selenium', 'webdriver', 'common', 'windows')),
+    ],
     datas=[
         (os.path.join(base_dir, 'Arquivos', 'soundcloud_track_scraper.py'), '.'),
+        (os.path.join(base_dir, 'Arquivos', 'browser_handler.py'), '.'),
+        (os.path.join(base_dir, 'Arquivos', 'crash_logger.py'), '.'),
         (os.path.join(base_dir, 'Dependencias', 'ffmpeg', 'ffmpeg-8.0-essentials_build', 'bin'), os.path.join('ffmpeg', 'bin')),
-        (os.path.join(base_dir, 'Dependencias', 'Navegador', 'chrome-win64'), os.path.join('Navegador', 'chrome-win64'))
     ],
-    hiddenimports=['soundcloud_track_scraper', 'selenium', 'yt_dlp', 'mutagen'],
+    hiddenimports=['soundcloud_track_scraper', 'browser_handler', 'crash_logger', 'selenium', 'selenium.webdriver.common.selenium_manager', 'yt_dlp', 'mutagen'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
