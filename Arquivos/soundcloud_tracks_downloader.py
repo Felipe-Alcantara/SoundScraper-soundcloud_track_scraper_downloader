@@ -267,38 +267,189 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
 
         return [], info
 
-filename = soundcloud_track_scraper()
 
-# Caminho da pasta onde os arquivos serão salvos
-print("═" * 70)
-print("📁  CONFIGURAÇÃO DA PASTA DE DESTINO")
-print("═" * 70)
-print("")
-print("💡 Dica: Você pode usar um nome simples como 'Musicas' ou um")
-print("   caminho completo como 'C:\\Users\\Seu Nome\\Musicas\\SoundCloud'")
-print("   Deixe em branco para usar o padrão: 'SoundCloud_Downloads'")
-print("")
-output_folder = input("📂 Digite o nome/caminho da pasta onde salvar: ").strip()
-print("")
+def _selecionar_pasta():
+    """Abre diálogo nativo de seleção de pasta. Fallback para input de texto."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()  # Esconde a janela principal
+        root.attributes('-topmost', True)  # Garante que o diálogo fique por cima
+        pasta = filedialog.askdirectory(title="Selecione a pasta para salvar as músicas")
+        root.destroy()
+        if pasta:
+            return pasta
+        # Se o usuário cancelou o diálogo, cai para o input manual
+        print("⚠️  Nenhuma pasta selecionada no diálogo.")
+        print("")
+    except Exception:
+        print("⚠️  Não foi possível abrir o seletor de pastas.")
+        print("")
 
-# Se o usuário não digitou nada, usar valor padrão
-if not output_folder:
-    output_folder = "SoundCloud_Downloads"
-    print("ℹ️  Usando pasta padrão: SoundCloud_Downloads")
-    print("")
+    # Fallback: input manual
+    print("💡 Digite o caminho da pasta ou deixe em branco para 'SoundCloud_Downloads'")
+    output_folder = input("📂 Caminho da pasta: ").strip()
+    return output_folder if output_folder else ""
 
-# Criar a pasta se ela não existir
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
-    print(f"✅ Pasta criada com sucesso: {output_folder}")
-    print("")
-else:
-    print(f"📂 Usando pasta existente: {output_folder}")
-    print("")
 
-# Função para solicitar o formato
-def solicitar_formato():
-    # Solicitar ao usuário o formato desejado
+def main():
+    """Loop principal do programa."""
+    while True:
+        filename = soundcloud_track_scraper()
+
+        # Caminho da pasta onde os arquivos serão salvos
+        print("═" * 70)
+        print("📁  CONFIGURAÇÃO DA PASTA DE DESTINO")
+        print("═" * 70)
+        print("")
+        print("📂 Selecione a pasta onde as músicas serão salvas...")
+        print("")
+        output_folder = _selecionar_pasta()
+
+        # Se o usuário não selecionou nada, usar valor padrão
+        if not output_folder:
+            output_folder = "SoundCloud_Downloads"
+            print(f"ℹ️  Usando pasta padrão: {output_folder}")
+            print("")
+
+        # Criar a pasta se ela não existir
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+            print(f"✅ Pasta criada com sucesso: {output_folder}")
+            print("")
+        else:
+            print(f"📂 Usando pasta existente: {output_folder}")
+            print("")
+
+        # Solicitar formato de áudio
+        audio_format = _solicitar_formato()
+
+        # Ler os URLs do arquivo
+        with open(filename, 'r', encoding='utf-8') as f:
+            urls = [line.strip() for line in f if line.strip()]
+            print(" ")
+            print(f"Total de URLs carregados: {len(urls)}")
+            print(" ")
+
+        # Apaga o arquivo TXT temporário de links
+        try:
+            os.remove(filename)
+            print(f"🗑️  Arquivo temporário removido: {filename}")
+            print("")
+        except Exception:
+            pass
+
+        # Definir o postprocessador FFmpegExtractAudio com base no formato escolhido
+        ffmpeg_extract_audio = {
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': audio_format,
+        }
+
+        # Se o formato for MP3, adicionar 'preferredquality'
+        if audio_format == 'mp3':
+            ffmpeg_extract_audio['preferredquality'] = '320'
+
+        # Verifica se o script está rodando em um ambiente "congelado" (após ser convertido para exe)
+        if getattr(sys, 'frozen', False):
+            bundle_dir = sys._MEIPASS
+            ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
+        else:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)
+            ffmpeg_path = os.path.join(project_root, 'Dependencias', 'ffmpeg', 'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
+
+        # Opções de download
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(output_folder, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
+            'restrictfilenames': True,
+            'postprocessors': [
+                ffmpeg_extract_audio,
+                {
+                    'key': 'FFmpegMetadata',
+                    'add_metadata': True,
+                },
+                {
+                    'key': 'EmbedThumbnail',
+                },
+            ],
+            'writethumbnail': True,
+            'prefer_ffmpeg': True,
+            'ffmpeg_location': ffmpeg_path,
+        }
+
+        # Banner de início do download
+        print("═" * 70)
+        print("🎵  INICIANDO DOWNLOAD DAS MÚSICAS")
+        print("═" * 70)
+        print("")
+        print(f"📊  Total de músicas na fila: {len(urls)}")
+        print(f"📂  Pasta de destino: {output_folder}")
+        print(f"🎼  Formato: {audio_format.upper()}")
+        print("")
+        print("─" * 70)
+        print("")
+
+        # Processar cada URL
+        total_urls = len(urls)
+        sucessos = 0
+        erros = 0
+
+        for index, url in enumerate(urls, start=1):
+            try:
+                _download_url(url, index, total_urls, ydl_opts)
+                _corrigir_nome_arquivo(output_folder)
+                sucessos += 1
+            except Exception as e:
+                print("")
+                print(f"❌  ERRO CRÍTICO ao processar música {index}/{total_urls}")
+                print(f"    {e}")
+                print("")
+                erros += 1
+
+        # Relatório final
+        print("")
+        print("═" * 70)
+        print("🎉  PROCESSO CONCLUÍDO!")
+        print("═" * 70)
+        print("")
+        print(f"✅  Sucessos: {sucessos} música(s)")
+        if erros > 0:
+            print(f"❌  Erros: {erros} música(s)")
+        print(f"📂  Pasta: {output_folder}")
+        print("")
+        print("═" * 70)
+        print("")
+
+        # Abre a pasta de destino no explorador de arquivos
+        try:
+            abs_folder = os.path.abspath(output_folder)
+            os.startfile(abs_folder)
+            print(f"📂 Pasta aberta: {abs_folder}")
+            print("")
+        except Exception:
+            pass
+
+        # Perguntar se quer baixar mais
+        print("─" * 70)
+        repetir = input("🔄 Deseja baixar mais músicas? (S/N, padrão=N): ").strip().upper()
+        if not repetir:
+            repetir = 'N'
+        if repetir != 'S':
+            print("")
+            print("Obrigado por usar o SoundScraper! 🎵")
+            print("")
+            break
+        print("")
+        print("═" * 70)
+        print("🔁  REINICIANDO...")
+        print("═" * 70)
+        print("")
+
+
+def _solicitar_formato():
+    """Solicita ao usuário o formato de áudio desejado."""
     print("═" * 70)
     print("🎵  ESCOLHA O FORMATO DE ÁUDIO")
     print("═" * 70)
@@ -316,13 +467,11 @@ def solicitar_formato():
     print("─" * 70)
     formato_escolhido = input("\n💿 Digite sua escolha (1 ou 2, padrão=2): ").strip()
 
-    # Se o usuário não digitou nada, usar MP3 como padrão
     if not formato_escolhido:
         formato_escolhido = '2'
         print("")
         print("ℹ️  Usando formato padrão: MP3 (320kbps)")
-    
-    # Processa a escolha
+
     if formato_escolhido == '1':
         audio_format = 'flac'
         print("")
@@ -339,87 +488,27 @@ def solicitar_formato():
     print("")
     return audio_format
 
-# Chamar a função e obter o formato escolhido
-audio_format = solicitar_formato()
 
-# Ler os URLs do arquivo
-with open(filename, 'r', encoding='utf-8') as f:
-    urls = [line.strip() for line in f if line.strip()]
-    print(" ")
-    print(f"Total de URLs carregados: {len(urls)}")
-    print(" ")
+def _corrigir_nome_arquivo(output_folder):
+    """Corrige nomes de arquivos, removendo 'NA' e substituindo underscores."""
+    for fname in os.listdir(output_folder):
+        novo_nome = fname
+        novo_nome = re.sub(r'NA - ', '', novo_nome)
+        novo_nome = re.sub(r'_', ' ', novo_nome)
+        novo_nome = re.sub(r'_-_', '-', novo_nome)
 
-# Definir o postprocessador FFmpegExtractAudio com base no formato escolhido
-ffmpeg_extract_audio = {
-    'key': 'FFmpegExtractAudio',
-    'preferredcodec': audio_format,
-}
-
-# Se o formato for MP3, adicionar 'preferredquality'
-if audio_format == 'mp3':
-    ffmpeg_extract_audio['preferredquality'] = '320'
-
-# Verifica se o script está rodando em um ambiente "congelado" (após ser convertido para exe)
-if getattr(sys, 'frozen', False):
-    # Obtém o diretório temporário do executável
-    bundle_dir = sys._MEIPASS
-
-    # Define o caminho para o executável do FFmpeg dentro do diretório do bundle
-    ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
-else:
-    # Usa o ffmpeg da pasta do repositório (Dependencias/ffmpeg/)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
-    ffmpeg_path = os.path.join(project_root, 'Dependencias', 'ffmpeg', 'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
-
-# Opções de download
-ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': os.path.join(output_folder, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
-    'restrictfilenames': True,
-    'postprocessors': [
-        ffmpeg_extract_audio,
-        {
-            # Incorpora metadados usando FFmpeg
-            'key': 'FFmpegMetadata',
-            'add_metadata': True,
-        },
-        {
-            # Embute a imagem da capa no arquivo de áudio
-            'key': 'EmbedThumbnail',
-        },
-    ],
-    'writethumbnail': True,  # Baixa a miniatura para embutir
-    'prefer_ffmpeg': True,
-    'ffmpeg_location': ffmpeg_path,  # Caminho completo para o ffmpeg.exe
-}
-
-# Função para corrigir o nome dos arquivos, removendo "NA" e corrigindo formatação
-def corrigir_nome_arquivo(output_folder):
-    for filename in os.listdir(output_folder):
-        # Cria uma nova variável para armazenar o nome atualizado
-        novo_nome = filename
-
-        # Substituir múltiplos padrões usando expressões regulares
-        novo_nome = re.sub(r'NA - ', '', novo_nome)  # Remove "NA -"
-        novo_nome = re.sub(r'_', ' ', novo_nome)     # Substitui "_" por espaço
-        novo_nome = re.sub(r'_-_', '-', novo_nome)   # Substitui "_-_" por "-"
-
-        # Se o nome foi alterado, renomeia o arquivo
-        if novo_nome != filename:
+        if novo_nome != fname:
             try:
-                os.rename(os.path.join(output_folder, filename), os.path.join(output_folder, novo_nome))
+                os.rename(os.path.join(output_folder, fname), os.path.join(output_folder, novo_nome))
                 print(f"   ✏️  Arquivo renomeado: {novo_nome}")
             except FileNotFoundError as e:
                 print(f"   ⚠️  Erro ao renomear: {e}")
 
-# Função para baixar um único URL
-def download_url(url, index, total):
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        # Adiciona o postprocessor personalizado para modificar os metadados
-        ydl.add_post_processor(AddCustomMetadataPP(), when='pre_process')
 
-        # Baixa e processa o vídeo
+def _download_url(url, index, total, ydl_opts):
+    """Baixa um único URL usando yt-dlp."""
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.add_post_processor(AddCustomMetadataPP(), when='pre_process')
         try:
             print("")
             print("─" * 70)
@@ -436,47 +525,8 @@ def download_url(url, index, total):
             print(f"    Motivo: {e}")
             print("")
 
-# Banner de início do download
-print("═" * 70)
-print("🎵  INICIANDO DOWNLOAD DAS MÚSICAS")
-print("═" * 70)
-print("")
-print(f"📊  Total de músicas na fila: {len(urls)}")
-print(f"📂  Pasta de destino: {output_folder}")
-print(f"🎼  Formato: {audio_format.upper()}")
-print("")
-print("─" * 70)
-print("")
 
-# Processar cada URL
-total_urls = len(urls)
-sucessos = 0
-erros = 0
-
-for index, url in enumerate(urls, start=1):
-    try:
-        download_url(url, index, total_urls)
-        # Corrigir os nomes dos arquivos baixados
-        corrigir_nome_arquivo(output_folder)
-        sucessos += 1
-    except Exception as e:
-        print("")
-        print(f"❌  ERRO CRÍTICO ao processar música {index}/{total_urls}")
-        print(f"    {e}")
-        print("")
-        erros += 1
-
-# Relatório final
-print("")
-print("═" * 70)
-print("🎉  PROCESSO CONCLUÍDO!")
-print("═" * 70)
-print("")
-print(f"✅  Sucessos: {sucessos} música(s)")
-if erros > 0:
-    print(f"❌  Erros: {erros} música(s)")
-print(f"📂  Pasta: {output_folder}")
-print("")
-print("═" * 70)
-print("")
-print("Obrigado por usar o SoundScraper! 🎵")
+# ══════════════════════════════════════════════════════════════
+#  Ponto de entrada
+# ══════════════════════════════════════════════════════════════
+main()

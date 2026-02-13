@@ -2,6 +2,7 @@ import subprocess
 import time
 import os
 import sys
+import re
 
 
 # Função para verificar e instalar dependências
@@ -113,7 +114,7 @@ from browser_handler import get_webdriver, get_selenium_version, http_fallback_s
 
 # Configurações iniciais para a rolagem
 SCROLL_PAUSE_TIME = 4  # Tempo de espera após cada scroll (ajuste se necessário)
-MAX_ATTEMPTS = 5  # Número máximo de tentativas sem novas faixas serem carregadas
+MAX_ATTEMPTS = 3  # Número máximo de tentativas sem novas faixas serem carregadas
 
 
 def get_soundcloud_link():
@@ -365,21 +366,17 @@ def soundcloud_track_scraper():
     soundcloud_link = get_soundcloud_link()
     soundcloud_link, choice = get_user_choice(soundcloud_link)
     
-    # Solicita o nome do arquivo para salvar os links
-    print("")
-    print("═" * 70)
-    print("📄  CONFIGURAÇÃO DO ARQUIVO DE SAÍDA")
-    print("═" * 70)
-    print("")
-    print("💡 Dica: Escolha um nome descritivo, como 'links_artista' ou 'playlist_favoritas'")
-    print("")
-    filename = input("📝 Digite o nome do arquivo (sem extensão): ").strip()
+    # Gera nome do arquivo automaticamente baseado no link
+    # Ex: soundcloud.com/artista/tracks → artista_tracks.txt
+    clean_url = soundcloud_link.replace('https://', '').replace('http://', '')
+    clean_url = clean_url.replace('soundcloud.com/', '')
+    # Sanitiza: substitui barras e caracteres inválidos por underscore
+    filename = re.sub(r'[^\w\-]', '_', clean_url).strip('_')
     if not filename:
-        filename = "soundcloud_links"
-        print(f"⚠️  Nome vazio! Usando padrão: {filename}")
-    filename += ".txt"
+        filename = 'soundcloud_links'
+    filename += '.txt'
     print("")
-    print(f"✅ Arquivo será salvo como: {filename}")
+    print(f"📄 Arquivo temporário de links: {filename}")
     print("")
 
     # ══════════════════════════════════════════════════════════════
