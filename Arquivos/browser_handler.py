@@ -391,7 +391,16 @@ def _get_collection_tracks(user_id, collection_type, client_id, limit=200):
     tracks = []
     page = 1
     next_href = (f"https://api-v2.soundcloud.com/users/{user_id}/{collection_type}"
-                 f"?client_id={client_id}&limit=50&offset=0")
+                 f"?client_id={client_id}&limit=50&offset=0"
+                 f"&linked_partitioning=1&app_locale=en")
+
+    api_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Origin': 'https://soundcloud.com',
+        'Referer': 'https://soundcloud.com/',
+    }
 
     print("─" * 70)
     print(f"⏳ Carregando faixas da API (tipo: {collection_type})...")
@@ -400,10 +409,7 @@ def _get_collection_tracks(user_id, collection_type, client_id, limit=200):
 
     while next_href and len(tracks) < limit * 5:
         print(f"   📄 Carregando página {page}...")
-        response = _http_get(next_href, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json',
-        })
+        response = _http_get(next_href, headers=api_headers)
 
         if not response:
             print("   ⚠️  Falha ao carregar página. Encerrando coleta.")
@@ -560,7 +566,9 @@ def http_fallback_scraper(soundcloud_link, choice):
 
     user_id = user_data['id']
     username = user_data.get('username', 'Desconhecido')
+    track_count = user_data.get('track_count', '?')
     print(f"✅ Artista encontrado: {username} (ID: {user_id})")
+    print(f"📊 Faixas no perfil (informado pela API): {track_count}")
     print("")
 
     collection_map = {

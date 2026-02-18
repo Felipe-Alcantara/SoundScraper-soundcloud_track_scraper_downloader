@@ -114,7 +114,7 @@ from browser_handler import get_webdriver, get_selenium_version, http_fallback_s
 
 # Configurações iniciais para a rolagem
 SCROLL_PAUSE_TIME = 4  # Tempo de espera após cada scroll (ajuste se necessário)
-MAX_ATTEMPTS = 3  # Número máximo de tentativas sem novas faixas serem carregadas
+MAX_ATTEMPTS = 5  # Número máximo de tentativas sem novas faixas serem carregadas
 
 
 def get_soundcloud_link():
@@ -284,11 +284,35 @@ def get_user_choice(artist_url):
 def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selector):
     """
     Função para rolar a página e coletar links das faixas encontradas.
+    Também tenta clicar em botões 'Show more' / 'Ver mais' para carregar tudo.
     """
     num_tracks = 0  # Inicializa a contagem de faixas encontradas
     attempts = 0  # Inicializa o contador de tentativas
 
     while attempts < max_attempts:
+        # Tenta clicar em botões "Show more" / "Ver mais" se existirem
+        try:
+            show_more_selectors = [
+                "a.showMore",
+                "button.showMore",
+                "a[class*='ShowMore']",
+                "button[class*='ShowMore']",
+                "a.compactTrackList__moreLink",
+            ]
+            for sel in show_more_selectors:
+                buttons = driver.find_elements(By.CSS_SELECTOR, sel)
+                for btn in buttons:
+                    if btn.is_displayed():
+                        try:
+                            btn.click()
+                            print("")
+                            print("🔘 Botão 'Ver mais' encontrado e clicado!")
+                            time.sleep(scroll_pause_time)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
         # Rola até o final da página para carregar mais conteúdo
         print("")
         print("Rolando a página para carregar mais faixas...")
@@ -350,8 +374,7 @@ def save_track_links(filename, tracks):
 def soundcloud_track_scraper():
     """
     Executa o fluxo completo de coleta de links de faixas do SoundCloud.
-    Tenta usar Selenium primeiro; se falhar (ex: EXE sem navegador), 
-    usa fallback via HTTP/API.
+    Usa Selenium + HTTP API combinados para máxima cobertura.
     """
     # Banner inicial
     print("")
@@ -363,8 +386,8 @@ def soundcloud_track_scraper():
     print("")
     
     # Obtém o link do perfil do SoundCloud e a opção escolhida pelo usuário
-    soundcloud_link = get_soundcloud_link()
-    soundcloud_link, choice = get_user_choice(soundcloud_link)
+    artist_base_url = get_soundcloud_link()  # Ex: https://soundcloud.com/glurckyy
+    soundcloud_link, choice = get_user_choice(artist_base_url)
     
     # Gera nome do arquivo automaticamente baseado no link
     # Ex: soundcloud.com/artista/tracks → artista_tracks.txt
@@ -380,9 +403,13 @@ def soundcloud_track_scraper():
     print("")
 
     # ══════════════════════════════════════════════════════════════
-    #  Tenta usar Selenium; se falhar, usa fallback HTTP
+    #  Coleta via Selenium + HTTP API (cobertura dupla)
     # ══════════════════════════════════════════════════════════════
     
+    selenium_urls = set()
+    http_urls = set()
+    
+    # ── ETAPA 1: Selenium ──
     selenium_ok = False
     driver = None
     
@@ -391,11 +418,10 @@ def soundcloud_track_scraper():
         driver = get_webdriver()  # Inicializa o WebDriver
         selenium_ok = True
     except SystemExit:
-        # get_webdriver chama sys.exit(1) quando falha — interceptamos aqui
         selenium_ok = False
         print("")
         print("═" * 70)
-        print("🔄  Selenium falhou! Tentando método alternativo (HTTP)...")
+        print("⚠️  Selenium não disponível — usando apenas HTTP/API")
         print("═" * 70)
         print("")
     except Exception as e:
@@ -404,12 +430,11 @@ def soundcloud_track_scraper():
         print(f"⚠️  Erro ao inicializar Selenium: {e}")
         print("")
         print("═" * 70)
-        print("🔄  Tentando método alternativo (HTTP)...")
+        print("⚠️  Selenium não disponível — usando apenas HTTP/API")
         print("═" * 70)
         print("")
 
     if selenium_ok and driver:
-        # ── CAMINHO 1: Selenium (método principal) ──
         try:
             print("═" * 70)
             print("🌐  ACESSANDO SOUNDCLOUD (via Selenium)")
@@ -439,48 +464,80 @@ def soundcloud_track_scraper():
 
             css_selector = "li.trackList__item a.trackItem__trackTitle" if choice in ['4', '5'] else "a.soundTitle__title"
             tracks = scroll_and_collect_tracks(driver, SCROLL_PAUSE_TIME, MAX_ATTEMPTS, css_selector)
-            save_track_links(filename, tracks)
+            
+            # Extrai URLs dos WebElements
+            for track in tracks:
+                href = track.get_attribute("href")
+                if href:
+                    selenium_urls.add(href)
+            
+            print(f"\n📊 Selenium coletou: {len(selenium_urls)} link(s)")
             driver.quit()
         except Exception as e:
             print(f"⚠️  Erro durante scraping com Selenium: {e}")
-            print("🔄  Tentando fallback HTTP...")
             if driver:
                 try:
                     driver.quit()
                 except:
                     pass
-            # Cai para o fallback HTTP
-            track_urls = http_fallback_scraper(soundcloud_link, choice)
-            if track_urls:
-                with open(filename, 'w', encoding='utf-8') as f:
-                    for url in track_urls:
-                        f.write(url + '\n')
-                print(f"\n✅ {len(track_urls)} links salvos via HTTP em: {filename}")
-            else:
-                print("\n❌ Não foi possível coletar links por nenhum método!")
-                input("Pressione ENTER para encerrar...")
-                sys.exit(1)
-    else:
-        # ── CAMINHO 2: Fallback HTTP (sem Selenium) ──
-        track_urls = http_fallback_scraper(soundcloud_link, choice)
-        
-        if track_urls:
-            with open(filename, 'w', encoding='utf-8') as f:
-                for url in track_urls:
-                    f.write(url + '\n')
-            print("")
-            print(f"✅ {len(track_urls)} links salvos via HTTP em: {filename}")
-        else:
-            print("")
-            print("❌ Não foi possível coletar links!")
-            print("")
-            print("💡 Soluções possíveis:")
-            print("   1. Instale o Google Chrome para usar o modo Selenium")
-            print("   2. Verifique sua conexão com a internet")
-            print("   3. Tente novamente mais tarde")
-            print("")
-            input("Pressione ENTER para encerrar...")
-            sys.exit(1)
+
+    # ── ETAPA 2: HTTP API (verificação e complemento) ──
+    print("")
+    print("═" * 70)
+    print("🔍  VERIFICANDO COBERTURA VIA API")
+    print("═" * 70)
+    print("")
+    
+    try:
+        result = http_fallback_scraper(soundcloud_link, choice)
+        if result:
+            http_urls = set(result)
+    except Exception as e:
+        print(f"⚠️  Erro no HTTP fallback: {e}")
+
+    # ── ETAPA 3: Mesclar resultados ──
+    all_urls = selenium_urls | http_urls
+    
+    if not all_urls:
+        print("")
+        print("❌ Não foi possível coletar links por nenhum método!")
+        print("")
+        print("💡 Soluções possíveis:")
+        print("   1. Instale o Google Chrome para usar o modo Selenium")
+        print("   2. Verifique sua conexão com a internet")
+        print("   3. Tente novamente mais tarde")
+        print("")
+        input("Pressione ENTER para encerrar...")
+        sys.exit(1)
+
+    # ── ETAPA 4: Estatísticas ──
+    apenas_selenium = selenium_urls - http_urls
+    apenas_http = http_urls - selenium_urls
+    em_comum = selenium_urls & http_urls
+    
+    print("")
+    print("═" * 70)
+    print("📊  RESULTADO DA COLETA")
+    print("═" * 70)
+    if selenium_urls:
+        print(f"   🌐 Selenium:  {len(selenium_urls)} link(s)")
+    if http_urls:
+        print(f"   📡 HTTP API:   {len(http_urls)} link(s)")
+    if selenium_urls and http_urls:
+        print(f"   🔗 Em comum:   {len(em_comum)}")
+        if apenas_http:
+            print(f"   ➕ Extras (só API): {len(apenas_http)} faixa(s) recuperada(s)!")
+        if apenas_selenium:
+            print(f"   ➕ Extras (só Selenium): {len(apenas_selenium)}")
+    print(f"   ✅ Total final: {len(all_urls)} faixa(s) únicas")
+    print("═" * 70)
+    print("")
+
+    # ── ETAPA 5: Salvar resultados ──
+    with open(filename, 'w', encoding='utf-8') as f:
+        for url in sorted(all_urls):
+            f.write(url + '\n')
+            print(f"   🔗 {url}")
     
     print("")
     print("═" * 70)
