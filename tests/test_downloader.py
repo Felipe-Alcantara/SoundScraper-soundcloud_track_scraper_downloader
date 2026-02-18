@@ -86,14 +86,14 @@ class TestFfmpegPath:
     """Testa a lógica de resolução do caminho do FFmpeg."""
 
     def test_script_mode_ffmpeg_path(self, mock_not_frozen):
-        """No modo script, deve apontar para Dependencias/ffmpeg/."""
-        script_dir = os.path.join('H:', 'projeto', 'Arquivos')
+        """No modo script, deve apontar para deps/ffmpeg/."""
+        script_dir = os.path.join('H:', 'projeto', 'core')
         project_root = os.path.dirname(script_dir)
-        expected = os.path.join(project_root, 'Dependencias', 'ffmpeg',
+        expected = os.path.join(project_root, 'deps', 'ffmpeg',
                                 'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
 
         # Simula a lógica do downloader
-        ffmpeg_path = os.path.join(project_root, 'Dependencias', 'ffmpeg',
+        ffmpeg_path = os.path.join(project_root, 'deps', 'ffmpeg',
                                    'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
         assert ffmpeg_path == expected
 
@@ -110,7 +110,7 @@ class TestFfmpegPath:
     def test_ffmpeg_exists_in_project(self):
         """O FFmpeg deve existir no projeto (dev environment)."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ffmpeg_path = os.path.join(project_root, 'Dependencias', 'ffmpeg',
+        ffmpeg_path = os.path.join(project_root, 'deps', 'ffmpeg',
                                    'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
         assert os.path.exists(ffmpeg_path), (
             f"FFmpeg não encontrado em: {ffmpeg_path}"
@@ -263,13 +263,13 @@ class TestSpecFile:
     def test_spec_file_exists(self):
         """O arquivo .spec deve existir."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        spec_file = os.path.join(project_root, 'soundcloud_tracks_downloader.spec')
+        spec_file = os.path.join(project_root, 'tools', 'soundcloud_tracks_downloader.spec')
         assert os.path.exists(spec_file), "Arquivo .spec não encontrado"
 
     def test_spec_includes_selenium_manager(self):
         """O .spec deve incluir selenium-manager.exe nos binaries."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        spec_file = os.path.join(project_root, 'soundcloud_tracks_downloader.spec')
+        spec_file = os.path.join(project_root, 'tools', 'soundcloud_tracks_downloader.spec')
 
         with open(spec_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -281,7 +281,7 @@ class TestSpecFile:
     def test_spec_includes_all_modules(self):
         """O .spec deve incluir todos os módulos do projeto."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        spec_file = os.path.join(project_root, 'soundcloud_tracks_downloader.spec')
+        spec_file = os.path.join(project_root, 'tools', 'soundcloud_tracks_downloader.spec')
 
         with open(spec_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -293,7 +293,7 @@ class TestSpecFile:
     def test_spec_includes_ffmpeg(self):
         """O .spec deve incluir FFmpeg nos datas."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        spec_file = os.path.join(project_root, 'soundcloud_tracks_downloader.spec')
+        spec_file = os.path.join(project_root, 'tools', 'soundcloud_tracks_downloader.spec')
 
         with open(spec_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -303,7 +303,7 @@ class TestSpecFile:
     def test_spec_has_hidden_imports(self):
         """O .spec deve ter hiddenimports para dependências problemáticas."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        spec_file = os.path.join(project_root, 'soundcloud_tracks_downloader.spec')
+        spec_file = os.path.join(project_root, 'tools', 'soundcloud_tracks_downloader.spec')
 
         with open(spec_file, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -339,13 +339,13 @@ class TestDependencies:
     def test_requirements_file_exists(self):
         """O arquivo requirements.txt deve existir."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        req_file = os.path.join(project_root, 'Dependencias', 'requirements.txt')
+        req_file = os.path.join(project_root, 'deps', 'requirements.txt')
         assert os.path.exists(req_file), "requirements.txt não encontrado"
 
     def test_requirements_not_empty(self):
         """O arquivo requirements.txt não deve estar vazio."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        req_file = os.path.join(project_root, 'Dependencias', 'requirements.txt')
+        req_file = os.path.join(project_root, 'deps', 'requirements.txt')
 
         with open(req_file, 'r') as f:
             packages = [l.strip() for l in f if l.strip() and not l.startswith('#')]

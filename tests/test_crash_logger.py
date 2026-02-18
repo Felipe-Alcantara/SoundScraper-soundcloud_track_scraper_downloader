@@ -40,8 +40,8 @@ class TestGetLogsFolder:
         logs_path = os.path.join(temp_dir, 'logs')
         assert not os.path.exists(logs_path)
 
-        # Simula que o script está no temp_dir/Arquivos/
-        fake_script = os.path.join(temp_dir, 'Arquivos', 'crash_logger.py')
+        # Simula que o script está no temp_dir/core/
+        fake_script = os.path.join(temp_dir, 'core', 'crash_logger.py')
         os.makedirs(os.path.dirname(fake_script), exist_ok=True)
 
         with patch.object(cl, '__file__', fake_script):

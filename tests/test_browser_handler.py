@@ -32,9 +32,9 @@ class TestGetBasePath:
     def test_base_path_script_mode(self, mock_not_frozen):
         """No modo script, deve retornar a pasta pai do diretório do módulo."""
         result = bh._get_base_path()
-        # Deve ser a raiz do projeto (pai de Arquivos/)
+        # Deve ser a raiz do projeto (pai de core/)
         assert os.path.isdir(result)
-        assert not result.endswith('Arquivos')
+        assert not result.endswith('core')
 
     def test_base_path_frozen_mode(self, mock_frozen, temp_dir):
         """No modo EXE (frozen), deve retornar sys._MEIPASS."""

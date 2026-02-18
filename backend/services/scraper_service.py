@@ -10,10 +10,10 @@ import os
 import time
 from pathlib import Path
 
-# Adiciona o diretório Arquivos/ ao path
-_arquivos_dir = str(Path(__file__).parent.parent.parent / "Arquivos")
-if _arquivos_dir not in sys.path:
-    sys.path.insert(0, _arquivos_dir)
+# Adiciona o diretório core/ ao path
+_core_dir = str(Path(__file__).parent.parent.parent / "core")
+if _core_dir not in sys.path:
+    sys.path.insert(0, _core_dir)
 
 
 async def run_scraper(url: str, choice: str, send_event):

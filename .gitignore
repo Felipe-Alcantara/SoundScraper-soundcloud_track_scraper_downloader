@@ -32,7 +32,7 @@ soundcloud_links.txt
 #  Navegador portátil (não versionado — baixar separadamente)
 # ══════════════════════════════════════════════════════════════
 /Chrome-bin/
-/Dependencias/Navegador/
+/deps/Navegador/
 
 # ══════════════════════════════════════════════════════════════
 #  Frontend
@@ -43,5 +43,4 @@ frontend/dist/
 # ══════════════════════════════════════════════════════════════
 #  Outros
 # ══════════════════════════════════════════════════════════════
-/Front.ipynb
 /SoundCloud_Downloads

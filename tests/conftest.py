@@ -8,12 +8,12 @@ import pytest
 import tempfile
 import shutil
 
-# Adiciona a pasta Arquivos ao sys.path para importar os módulos
+# Adiciona a pasta core ao sys.path para importar os módulos
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ARQUIVOS_DIR = os.path.join(PROJECT_ROOT, 'Arquivos')
+CORE_DIR = os.path.join(PROJECT_ROOT, 'core')
 
-if ARQUIVOS_DIR not in sys.path:
-    sys.path.insert(0, ARQUIVOS_DIR)
+if CORE_DIR not in sys.path:
+    sys.path.insert(0, CORE_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 

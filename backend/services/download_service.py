@@ -9,10 +9,10 @@ import re
 import sys
 from pathlib import Path
 
-# Adiciona o diretório Arquivos/ ao path
-_arquivos_dir = str(Path(__file__).parent.parent.parent / "Arquivos")
-if _arquivos_dir not in sys.path:
-    sys.path.insert(0, _arquivos_dir)
+# Adiciona o diretório core/ ao path
+_core_dir = str(Path(__file__).parent.parent.parent / "core")
+if _core_dir not in sys.path:
+    sys.path.insert(0, _core_dir)
 
 
 def _get_ffmpeg_path():
@@ -23,7 +23,7 @@ def _get_ffmpeg_path():
     else:
         project_root = Path(__file__).parent.parent.parent
         return str(
-            project_root / 'Dependencias' / 'ffmpeg' /
+            project_root / 'deps' / 'ffmpeg' /
             'ffmpeg-8.0-essentials_build' / 'bin' / 'ffmpeg.exe'
         )
 
