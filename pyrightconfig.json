@@ -1,0 +1,5 @@
+{
+  "extraPaths": ["core"],
+  "exclude": [".venv", "node_modules", "frontend/dist"],
+  "reportMissingImports": "warning"
+}

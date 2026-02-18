@@ -18,7 +18,7 @@ if _core_dir not in sys.path:
 def _get_ffmpeg_path():
     """Retorna o caminho do FFmpeg."""
     if getattr(sys, 'frozen', False):
-        bundle_dir = sys._MEIPASS
+        bundle_dir: str = getattr(sys, '_MEIPASS', '')
         return os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
     else:
         project_root = Path(__file__).parent.parent.parent
@@ -84,7 +84,7 @@ def _download_single(url: str, ydl_opts: dict) -> dict:
     # Postprocessor para capturar metadados
     captured_meta = {}
 
-    class CaptureMeta(yt_dlp.postprocessor.PostProcessor):
+    class CaptureMeta(yt_dlp.postprocessor.PostProcessor):  # type: ignore[attr-defined]
         def run(self, info):
             info['artist'] = info.get('artist', '') or info.get('uploader', '')
 
@@ -136,7 +136,7 @@ def _download_single(url: str, ydl_opts: dict) -> dict:
             return [], info
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
             ydl.add_post_processor(CaptureMeta(), when='pre_process')
             ydl.download([url])
 

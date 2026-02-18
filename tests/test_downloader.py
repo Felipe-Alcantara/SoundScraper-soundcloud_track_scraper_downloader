@@ -103,7 +103,7 @@ class TestFfmpegPath:
         expected = os.path.join(temp_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
 
         # Simula a lógica do downloader
-        bundle_dir = sys._MEIPASS
+        bundle_dir: str = getattr(sys, '_MEIPASS', '')
         ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
         assert ffmpeg_path == expected
 

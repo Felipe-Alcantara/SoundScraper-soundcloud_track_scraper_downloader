@@ -91,7 +91,7 @@ def main():
     selenium_manager_path = None
     try:
         selenium_pkg = importlib.import_module('selenium')
-        selenium_dir = os.path.dirname(selenium_pkg.__file__)
+        selenium_dir = os.path.dirname(selenium_pkg.__file__ or '')
         sm_path = os.path.join(selenium_dir, 'webdriver', 'common', 'windows', 'selenium-manager.exe')
         if os.path.exists(sm_path):
             selenium_manager_path = sm_path

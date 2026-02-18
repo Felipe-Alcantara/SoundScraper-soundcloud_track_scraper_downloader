@@ -196,6 +196,7 @@ def _scroll_and_collect(driver, css_selector, send_event_sync=None):
     max_attempts = 5
     num_tracks = 0
     attempts = 0
+    tracks = []
 
     while attempts < max_attempts:
         # Tenta clicar "Show more"
