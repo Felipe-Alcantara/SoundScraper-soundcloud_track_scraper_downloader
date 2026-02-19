@@ -23,7 +23,7 @@ import shutil
 def _get_base_path():
     """Retorna o diretório base dependendo se está rodando como EXE ou script."""
     if getattr(sys, 'frozen', False):
-        return sys._MEIPASS
+        return getattr(sys, '_MEIPASS', os.getcwd())
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.dirname(script_dir)
@@ -153,7 +153,7 @@ def _setup_selenium_manager_for_exe():
     if not getattr(sys, 'frozen', False):
         return
 
-    bundle_dir = sys._MEIPASS
+    bundle_dir = getattr(sys, '_MEIPASS', os.getcwd())
     sm_path = os.path.join(bundle_dir, 'selenium', 'webdriver', 'common', 'windows', 'selenium-manager.exe')
 
     if os.path.exists(sm_path):

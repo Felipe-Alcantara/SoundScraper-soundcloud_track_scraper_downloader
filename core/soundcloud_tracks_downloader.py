@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 import re
+from typing import Any, cast
 
 # Inicializa o sistema de logging ANTES de tudo
 # Isso garante que qualquer crash será capturado e salvo em arquivo
@@ -132,11 +133,13 @@ if not check_and_install_requirements():
 
 # Importa as dependências após verificação
 import yt_dlp
+from yt_dlp.postprocessor.common import PostProcessor
 from soundcloud_track_scraper import soundcloud_track_scraper
 
 # Classe personalizada para adicionar metadados ao info_dict
-class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
-    def run(self, info):
+class AddCustomMetadataPP(PostProcessor):
+    def run(self, information):
+        info = cast(dict[str, Any], information)
         print("")
         print("📝 Adicionando metadados personalizados...")
         
@@ -265,7 +268,7 @@ class AddCustomMetadataPP(yt_dlp.postprocessor.PostProcessor):
         
         print("="*70 + "\n")
 
-        return [], info
+        return [], information
 
 
 def _selecionar_pasta():
@@ -352,7 +355,7 @@ def main():
 
         # Verifica se o script está rodando em um ambiente "congelado" (após ser convertido para exe)
         if getattr(sys, 'frozen', False):
-            bundle_dir = sys._MEIPASS
+            bundle_dir = getattr(sys, '_MEIPASS', os.getcwd())
             ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
         else:
             script_dir = os.path.dirname(os.path.abspath(__file__))

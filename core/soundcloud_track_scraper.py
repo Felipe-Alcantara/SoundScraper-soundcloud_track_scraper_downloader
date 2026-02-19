@@ -286,6 +286,7 @@ def scroll_and_collect_tracks(driver, scroll_pause_time, max_attempts, css_selec
     Função para rolar a página e coletar links das faixas encontradas.
     Também tenta clicar em botões 'Show more' / 'Ver mais' para carregar tudo.
     """
+    tracks = []
     num_tracks = 0  # Inicializa a contagem de faixas encontradas
     attempts = 0  # Inicializa o contador de tentativas
 
