@@ -7,12 +7,18 @@ import asyncio
 import os
 import re
 import sys
+import time
+from queue import Empty, Queue
 from pathlib import Path
 
 # Adiciona o diretório core/ ao path
 _core_dir = str(Path(__file__).parent.parent.parent / "core")
 if _core_dir not in sys.path:
     sys.path.insert(0, _core_dir)
+
+YTDLP_SOCKET_TIMEOUT = int(os.getenv("SOUNDSCRAPER_SOCKET_TIMEOUT", "30"))
+YTDLP_RETRIES = int(os.getenv("SOUNDSCRAPER_RETRIES", "3"))
+DOWNLOAD_HEARTBEAT_SECONDS = int(os.getenv("SOUNDSCRAPER_DOWNLOAD_HEARTBEAT_SECONDS", "10"))
 
 
 def _get_ffmpeg_path():
@@ -49,6 +55,11 @@ def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str) -> dict:
         'writethumbnail': True,
         'prefer_ffmpeg': True,
         'ffmpeg_location': ffmpeg_path,
+        'socket_timeout': YTDLP_SOCKET_TIMEOUT,
+        'retries': YTDLP_RETRIES,
+        'fragment_retries': YTDLP_RETRIES,
+        'extractor_retries': YTDLP_RETRIES,
+        'file_access_retries': YTDLP_RETRIES,
         'quiet': True,
         'no_warnings': True,
     }
@@ -74,7 +85,7 @@ def _corrigir_nomes(output_dir: str) -> list:
     return renamed
 
 
-def _download_single(url: str, ydl_opts: dict) -> dict:
+def _download_single(url: str, ydl_opts: dict, progress_queue: Queue | None = None) -> dict:
     """
     Baixa uma única faixa. Retorna dict com infos e status.
     Versão síncrona para rodar em thread.
@@ -136,7 +147,24 @@ def _download_single(url: str, ydl_opts: dict) -> dict:
             return [], info
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
+        local_opts = dict(ydl_opts)
+
+        if progress_queue is not None:
+            def _progress_hook(data):
+                try:
+                    progress_queue.put_nowait({
+                        "status": data.get("status"),
+                        "downloaded_bytes": data.get("downloaded_bytes"),
+                        "total_bytes": data.get("total_bytes") or data.get("total_bytes_estimate"),
+                        "eta": data.get("eta"),
+                        "speed": data.get("speed"),
+                    })
+                except Exception:
+                    pass
+
+            local_opts["progress_hooks"] = [_progress_hook]
+
+        with yt_dlp.YoutubeDL(local_opts) as ydl:  # type: ignore[arg-type]
             ydl.add_post_processor(CaptureMeta(), when='pre_process')
             ydl.download([url])
 
@@ -176,10 +204,19 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
     ffmpeg_path = _get_ffmpeg_path()
     ydl_opts = _get_ydl_opts(output_dir, audio_format, ffmpeg_path)
 
+    if os.path.exists(ffmpeg_path):
+        await send_event({"type": "log", "message": f"FFmpeg detectado: {ffmpeg_path}"})
+    else:
+        await send_event({
+            "type": "log",
+            "message": f"⚠️ FFmpeg não encontrado em {ffmpeg_path}. Tentando FFmpeg do sistema."
+        })
+
     sucessos = 0
     erros = 0
 
     for i, url in enumerate(tracks, 1):
+        track_started = time.monotonic()
         await send_event({
             "type": "start",
             "index": i,
@@ -188,8 +225,49 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
             "message": f"Baixando [{i}/{total}]..."
         })
 
-        # Roda download em thread para não bloquear o event loop
-        result = await asyncio.to_thread(_download_single, url, ydl_opts)
+        # Roda download em thread para não bloquear o event loop.
+        # Em paralelo, emite heartbeat/progresso para não parecer travado.
+        progress_queue: Queue = Queue()
+        task = asyncio.create_task(asyncio.to_thread(_download_single, url, ydl_opts, progress_queue))
+        next_heartbeat_at = track_started + DOWNLOAD_HEARTBEAT_SECONDS
+        last_percent_reported = -1
+
+        while not task.done():
+            await asyncio.sleep(1)
+            while True:
+                try:
+                    item = progress_queue.get_nowait()
+                except Empty:
+                    break
+
+                status = item.get("status")
+                if status == "downloading":
+                    downloaded = item.get("downloaded_bytes") or 0
+                    total_bytes = item.get("total_bytes") or 0
+                    if total_bytes:
+                        percent = int((float(downloaded) / float(total_bytes)) * 100)
+                        if percent >= last_percent_reported + 10:
+                            last_percent_reported = percent
+                            await send_event({
+                                "type": "log",
+                                "message": f"⬇️ [{i}/{total}] {percent}% concluído"
+                            })
+                elif status == "finished":
+                    await send_event({
+                        "type": "log",
+                        "message": f"🔄 [{i}/{total}] Download concluído, convertendo áudio..."
+                    })
+
+            now = time.monotonic()
+            if now >= next_heartbeat_at:
+                elapsed = int(now - track_started)
+                await send_event({
+                    "type": "log",
+                    "message": f"⏳ [{i}/{total}] Processando há {elapsed}s..."
+                })
+                next_heartbeat_at = now + DOWNLOAD_HEARTBEAT_SECONDS
+
+        result = await task
 
         if result["success"]:
             sucessos += 1
@@ -205,7 +283,10 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
                 "url": url,
                 "title": meta.get("title", ""),
                 "artist": meta.get("artist", ""),
-                "message": f"✅ [{i}/{total}] {meta.get('artist', '')} - {meta.get('title', '')}"
+                "message": (
+                    f"✅ [{i}/{total}] {meta.get('artist', '')} - {meta.get('title', '')} "
+                    f"({int(time.monotonic() - track_started)}s)"
+                )
             })
         else:
             erros += 1
@@ -214,7 +295,10 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
                 "index": i,
                 "total": total,
                 "url": url,
-                "message": f"❌ [{i}/{total}] Erro: {result.get('error', 'desconhecido')}"
+                "message": (
+                    f"❌ [{i}/{total}] Erro após {int(time.monotonic() - track_started)}s: "
+                    f"{result.get('error', 'desconhecido')}"
+                )
             })
 
     await send_event({

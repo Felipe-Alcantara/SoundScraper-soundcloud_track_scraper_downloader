@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { API_ORIGIN, buildApiUrl, buildWsUrl } from '../utils/network'
 
 /**
  * Hook para scraping via WebSocket.
@@ -10,76 +11,116 @@ export function useScraper() {
   const [logs, setLogs] = useState([])
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const wsRef = useRef(null)
+  const closedManuallyRef = useRef(false)
+  const terminalEventReceivedRef = useRef(false)
 
   const addLog = useCallback((message) => {
     setLogs((prev) => [...prev, { time: new Date().toLocaleTimeString(), message }])
   }, [])
 
   const startScrape = useCallback((url, choice) => {
+    closedManuallyRef.current = false
+    terminalEventReceivedRef.current = false
     setStatus('connecting')
     setTracks([])
     setLogs([])
     setProgress({ current: 0, total: 0 })
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${window.location.host}/api/ws/scrape`
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
+    const connect = async () => {
+      try {
+        const response = await fetch(buildApiUrl('/api/info'), { method: 'GET' })
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+      } catch (error) {
+        setStatus('error')
+        addLog(`❌ Backend indisponível em ${API_ORIGIN}`)
+        addLog('⚠️ Inicie o backend antes de coletar faixas')
+        return
+      }
 
-    ws.onopen = () => {
-      setStatus('scraping')
-      addLog(`Conectado! Iniciando coleta de ${url}...`)
-      ws.send(JSON.stringify({ url, choice }))
-    }
+      const wsUrl = buildWsUrl('/api/ws/scrape')
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
+      ws.onopen = () => {
+        setStatus('scraping')
+        addLog(`Conectado em ${wsUrl}`)
+        addLog(`Conectado! Iniciando coleta de ${url}...`)
+        ws.send(JSON.stringify({ url, choice }))
+      }
 
-      switch (data.type) {
-        case 'log':
-          addLog(data.message)
-          break
-
-        case 'stage':
-          addLog(`── ${data.message}`)
-          break
-
-        case 'track':
-          setTracks((prev) => [...prev, data.url])
-          setProgress({ current: data.index, total: data.total })
-          break
-
-        case 'done':
-          setStatus('done')
-          setTracks(data.tracks || [])
-          setProgress({ current: data.total, total: data.total })
-          addLog(data.message || `Concluído: ${data.total} faixa(s)`)
-          break
-
-        case 'error':
+      ws.onmessage = (event) => {
+        let data
+        try {
+          data = JSON.parse(event.data)
+        } catch {
           setStatus('error')
-          addLog(`❌ ${data.message}`)
-          break
+          addLog('❌ Mensagem inválida recebida do servidor de scraping')
+          return
+        }
 
-        default:
-          addLog(data.message || JSON.stringify(data))
+        switch (data.type) {
+          case 'log':
+            addLog(data.message)
+            break
+
+          case 'stage':
+            addLog(`── ${data.message}`)
+            break
+
+          case 'track':
+            setTracks((prev) => [...prev, data.url])
+            setProgress({ current: data.index, total: data.total })
+            break
+
+          case 'done':
+            terminalEventReceivedRef.current = true
+            setStatus('done')
+            setTracks(data.tracks || [])
+            setProgress({ current: data.total, total: data.total })
+            addLog(data.message || `Concluído: ${data.total} faixa(s)`)
+            break
+
+          case 'error':
+            terminalEventReceivedRef.current = true
+            setStatus('error')
+            addLog(`❌ ${data.message}`)
+            break
+
+          default:
+            addLog(data.message || JSON.stringify(data))
+        }
+      }
+
+      ws.onerror = () => {
+        setStatus('error')
+        addLog(`❌ Erro na conexão WebSocket (${wsUrl})`)
+      }
+
+      ws.onclose = () => {
+        if (wsRef.current === ws) {
+          wsRef.current = null
+        }
+
+        if (!closedManuallyRef.current && !terminalEventReceivedRef.current) {
+          setStatus((prev) => {
+            if (prev === 'done' || prev === 'error' || prev === 'idle') {
+              return prev
+            }
+            return 'error'
+          })
+          addLog('⚠️ Conexão WebSocket encerrada antes da conclusão da coleta')
+        }
       }
     }
 
-    ws.onerror = () => {
-      setStatus('error')
-      addLog('Erro na conexão WebSocket')
-    }
-
-    ws.onclose = () => {
-      if (wsRef.current === ws) {
-        wsRef.current = null
-      }
-    }
+    void connect()
   }, [addLog])
 
   const reset = useCallback(() => {
     if (wsRef.current) {
+      closedManuallyRef.current = true
       wsRef.current.close()
       wsRef.current = null
     }

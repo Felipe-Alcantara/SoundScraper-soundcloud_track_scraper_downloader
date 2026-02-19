@@ -1,23 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Reset e estilos globais */
+:root {
+  --felixo-purple: #c084fc;
+  --felixo-purple-bright: #a855f7;
+  --zinc-950: rgb(9 9 11);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Space Grotesk', sans-serif;
+  color: rgb(250 250 250);
+  background:
+    radial-gradient(circle at 8% 18%, rgba(168, 85, 247, 0.13), transparent 34%),
+    radial-gradient(circle at 86% 0%, rgba(192, 132, 252, 0.1), transparent 30%),
+    linear-gradient(to bottom, #000, var(--zinc-950), #000);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.felixo-card-glow {
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.24), 0 0 36px rgba(168, 85, 247, 0.16);
+  animation: card-glow-breathe 3s ease-in-out infinite;
+}
+
+.felixo-card-glow-white {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 0 26px rgba(255, 255, 255, 0.08);
+}
+
+.title-glow-purple {
+  animation: title-glow-purple 3s ease-in-out infinite;
+}
+
+.input-glowing-border:focus {
+  border-color: rgba(192, 132, 252, 0.95);
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.65), 0 0 22px rgba(168, 85, 247, 0.2);
+}
+
+.text-glow {
+  animation: text-glow-breathe 3.8s ease-in-out infinite;
+}
+
+@keyframes card-glow-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.2), 0 0 28px rgba(168, 85, 247, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.32), 0 0 44px rgba(168, 85, 247, 0.26);
+  }
+}
+
+@keyframes title-glow-purple {
+  0%,
+  100% {
+    text-shadow: 0 0 12px rgba(192, 132, 252, 0.35);
+  }
+  50% {
+    text-shadow: 0 0 22px rgba(168, 85, 247, 0.8);
+  }
+}
+
+@keyframes text-glow-breathe {
+  0%,
+  100% {
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.18);
+  }
+  50% {
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+  }
 }
 
 /* Scrollbar customizada */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: rgba(20, 20, 20, 0.92);
 }
 ::-webkit-scrollbar-thumb {
-  background: #444;
+  background: rgba(74, 74, 74, 0.8);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #666;
+  background: rgba(106, 106, 106, 0.9);
 }

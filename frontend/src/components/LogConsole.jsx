@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import Badge from './ui/Badge'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 
 function LogConsole({ logs }) {
   const bottomRef = useRef(null)
@@ -8,21 +10,28 @@ function LogConsole({ logs }) {
   }, [logs])
 
   return (
-    <div className="bg-black border border-gray-800 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2 bg-gray-900 border-b border-gray-800">
-        <span className="text-xs text-gray-500">📋 Console</span>
-      </div>
-      <div className="p-4 max-h-48 overflow-y-auto font-mono text-xs space-y-1">
-        {logs.map((log, i) => (
-          <div key={i} className="flex gap-2">
-            <span className="text-gray-600 select-none">[{log.time}]</span>
-            <span className="text-gray-300">{log.message}</span>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-    </div>
+    <Card className="felixo-card-glow-white">
+      <CardHeader className="flex items-center justify-between gap-3">
+        <CardTitle className="text-sm">Console em Tempo Real</CardTitle>
+        <Badge className="bg-zinc-800 text-zinc-300 border-white/10">
+          {logs.length} evento(s)
+        </Badge>
+      </CardHeader>
+
+      <CardContent className="p-0">
+        <div className="max-h-56 overflow-y-auto font-mono text-xs">
+          {logs.map((log, index) => (
+            <div key={`${log.time}-${index}`} className="px-5 py-2 border-b border-white/5 flex gap-3">
+              <span className="text-zinc-500 shrink-0">[{log.time}]</span>
+              <span className="text-zinc-300 break-words">{log.message}</span>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
 export default LogConsole
+

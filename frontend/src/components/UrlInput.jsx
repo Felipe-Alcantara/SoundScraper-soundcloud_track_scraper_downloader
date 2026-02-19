@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import Button from './ui/Button'
+import Input from './ui/Input'
+import Badge from './ui/Badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/Card'
+import { cx } from '../utils/cx'
 
 const OPTIONS = [
   { value: '1', label: 'Todas', icon: '📀' },
@@ -14,68 +19,79 @@ function UrlInput({ onScrapeStart }) {
   const [url, setUrl] = useState('')
   const [choice, setChoice] = useState('3')
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!url.trim()) return
-    onScrapeStart(url.trim(), choice)
+  const trimmedUrl = url.trim()
+  const isValidUrl = !trimmedUrl
+    ? false
+    : trimmedUrl.includes('soundcloud.com/') || /^[a-zA-Z0-9_-]+$/.test(trimmedUrl)
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (!isValidUrl) return
+    onScrapeStart(trimmedUrl, choice)
   }
 
-  const isValidUrl = url.includes('soundcloud.com/') || url.match(/^[a-zA-Z0-9_-]+$/)
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Input da URL */}
-      <div>
-        <label className="block text-sm text-gray-400 mb-2">
-          Link do SoundCloud
-        </label>
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="soundcloud.com/artista ou cole o link completo..."
-          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white
-                     placeholder-gray-500 focus:outline-none focus:border-soundcloud-orange
-                     transition"
-        />
-      </div>
-
-      {/* Opções */}
-      <div>
-        <label className="block text-sm text-gray-400 mb-3">
-          O que deseja baixar?
-        </label>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-          {OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setChoice(opt.value)}
-              className={`flex flex-col items-center gap-1 py-3 px-2 rounded-lg border transition text-sm
-                ${choice === opt.value
-                  ? 'border-soundcloud-orange bg-soundcloud-orange/10 text-white'
-                  : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500'
-                }`}
-            >
-              <span className="text-lg">{opt.icon}</span>
-              <span>{opt.label}</span>
-            </button>
-          ))}
+    <Card className="felixo-card-glow">
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-3">
+          <CardTitle className="text-lg">Coletar Links do SoundCloud</CardTitle>
+          <Badge className="bg-felixo-purple/10 text-felixo-purple border-felixo-purple/35">
+            Etapa 1
+          </Badge>
         </div>
-      </div>
+        <CardDescription className="mt-2">
+          Cole um perfil/URL e escolha o tipo de coleção para iniciar a coleta em tempo real.
+        </CardDescription>
+      </CardHeader>
 
-      {/* Botão de iniciar */}
-      <button
-        type="submit"
-        disabled={!isValidUrl}
-        className="w-full bg-soundcloud-orange hover:bg-orange-600 disabled:bg-gray-700
-                   disabled:text-gray-500 text-white font-semibold py-3 rounded-lg
-                   transition"
-      >
-        🔍 Buscar faixas
-      </button>
-    </form>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="block text-sm text-zinc-300">Link do SoundCloud</label>
+            <Input
+              type="text"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="soundcloud.com/artista ou https://soundcloud.com/artista"
+            />
+            {trimmedUrl && !isValidUrl && (
+              <p className="text-xs text-red-300">Formato inválido. Use um link SoundCloud ou nome de perfil.</p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-sm text-zinc-300">O que deseja coletar?</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              {OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setChoice(option.value)}
+                  className={cx(
+                    'rounded-2xl border px-3 py-3 text-left transition-all duration-300',
+                    'bg-zinc-900/70 hover:border-white/30 hover:-translate-y-0.5',
+                    choice === option.value
+                      ? 'border-felixo-purple/60 bg-felixo-purple/10'
+                      : 'border-white/10',
+                  )}
+                >
+                  <span className="block text-lg">{option.icon}</span>
+                  <span className={cx('mt-1 block text-sm font-medium', choice === option.value ? 'text-white' : 'text-zinc-300')}>
+                    {option.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button type="submit" shimmer className="w-full" disabled={!isValidUrl}>
+            Iniciar Coleta
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 
 export default UrlInput
+

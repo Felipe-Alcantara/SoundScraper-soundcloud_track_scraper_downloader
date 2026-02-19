@@ -1,12 +1,25 @@
+import Badge from './ui/Badge'
+
 function Header() {
   return (
-    <header className="border-b border-gray-800 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-        <span className="text-2xl">🎵</span>
-        <h1 className="text-xl font-bold">
-          Sound<span className="text-soundcloud-orange">Scraper</span>
-        </h1>
-        <span className="text-xs text-gray-500 ml-auto">v3.0</span>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="h-11 w-11 rounded-2xl border border-felixo-purple/40 bg-zinc-900/90 flex items-center justify-center text-xl">
+          🎵
+        </div>
+
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+            SoundCloud Downloader
+          </p>
+          <h1 className="text-2xl md:text-3xl font-bold leading-tight">
+            Sound<span className="text-felixo-purple title-glow-purple">Scraper</span>
+          </h1>
+        </div>
+
+        <Badge className="ml-auto bg-felixo-purple/10 text-felixo-purple border-felixo-purple/35">
+          v3.0 Web
+        </Badge>
       </div>
     </header>
   )
