@@ -4,8 +4,8 @@ function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-        <div className="h-11 w-11 rounded-2xl border border-felixo-purple/40 bg-zinc-900/90 flex items-center justify-center text-xl">
-          🎵
+        <div className="h-11 w-11 rounded-2xl border border-felixo-purple/40 bg-zinc-900/90 flex items-center justify-center">
+          <img src="/sound_scraper_logo.ico" alt="SoundScraper Logo" className="h-8 w-8" />
         </div>
 
         <div>
