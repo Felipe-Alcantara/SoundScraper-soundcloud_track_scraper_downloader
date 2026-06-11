@@ -41,7 +41,8 @@ def check_and_install_requirements():
     # Verifica cada pacote
     for package in required_packages:
         # Remove especificações de versão para checagem
-        package_name = package.split('==')[0].split('>=')[0].split('<=')[0].strip()
+        package_name = package.split('==')[0].split('>=')[0].split('<=')[0]
+        package_name = package_name.split('[')[0].strip()
         
         try:
             __import__(package_name.replace('-', '_'))
@@ -532,4 +533,8 @@ def _download_url(url, index, total, ydl_opts):
 # ══════════════════════════════════════════════════════════════
 #  Ponto de entrada
 # ══════════════════════════════════════════════════════════════
-main()
+# Guarda __main__: roda main() quando executado direto (terminal) ou empacotado
+# pelo PyInstaller (que roda o script como __main__), mas permite importar o
+# módulo (run_cli.py, testes) sem disparar o fluxo interativo.
+if __name__ == '__main__':
+    main()

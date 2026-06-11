@@ -35,9 +35,10 @@ def check_and_install_requirements():
     
     # Verifica cada pacote
     for package in required_packages:
-        # Remove especificações de versão para checagem
-        package_name = package.split('==')[0].split('>=')[0].split('<=')[0].strip()
-        
+        # Remove versão (==, >=, <=) e extras ([standard]) para obter o nome do módulo.
+        package_name = package.split('==')[0].split('>=')[0].split('<=')[0]
+        package_name = package_name.split('[')[0].strip()
+
         try:
             __import__(package_name.replace('-', '_'))
             print(f"  ✅  {package_name:<20} → Instalado")
