@@ -7,7 +7,7 @@ from typing import Any, cast
 # Inicializa o sistema de logging ANTES de tudo
 # Isso garante que qualquer crash será capturado e salvo em arquivo
 from crash_logger import inicializar_logger
-from platform_utils import find_ffmpeg, open_folder
+from platform_utils import ensure_ffmpeg, find_ffmpeg, open_folder
 session_log = inicializar_logger()
 
 # Função para verificar e instalar dependências
@@ -355,13 +355,13 @@ def main():
         if audio_format == 'mp3':
             ffmpeg_extract_audio['preferredquality'] = '320'
 
-        # Localiza o FFmpeg de forma portável (bundle EXE → projeto → PATH do sistema).
+        # Garante o FFmpeg (bundle EXE → projeto → PATH; se faltar, oferece instalar).
         # Funciona em Windows, Linux e macOS.
-        ffmpeg_path = find_ffmpeg()
+        ffmpeg_path = ensure_ffmpeg()
         if ffmpeg_path:
             print(f"🎥  FFmpeg: {ffmpeg_path}")
         else:
-            print("⚠️  FFmpeg não localizado no projeto nem no PATH; o yt-dlp tentará o do sistema.")
+            print("⚠️  FFmpeg indisponível; o yt-dlp tentará o do sistema (o download pode falhar).")
         print("")
 
         # Opções de download

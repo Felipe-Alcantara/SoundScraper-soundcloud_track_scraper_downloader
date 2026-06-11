@@ -65,6 +65,113 @@ def find_ffmpeg() -> str | None:
     return None
 
 
+def ffmpeg_install_command() -> tuple[list[str], str] | None:
+    """
+    Decide o melhor comando de instalação do FFmpeg para o SO atual, detectando
+    o gerenciador de pacotes disponível (via shutil.which).
+
+    Retorna (comando, rótulo-humano) ou None se nenhum gerenciador conhecido for
+    encontrado. PURO/sem efeitos colaterais (apenas consulta o PATH), para ser
+    testável. No Linux, comandos com apt/dnf/pacman incluem 'sudo' quando o
+    usuário não é root.
+    """
+    def _sudo() -> list[str]:
+        # Em Linux/macOS, usa sudo se não for root e o sudo existir.
+        if not is_windows() and os.geteuid() != 0 and shutil.which("sudo"):  # type: ignore[attr-defined]
+            return ["sudo"]
+        return []
+
+    if is_windows():
+        if shutil.which("winget"):
+            return (["winget", "install", "--silent", "--accept-package-agreements",
+                     "--accept-source-agreements", "-e", "--id", "Gyan.FFmpeg"], "winget")
+        if shutil.which("choco"):
+            return (["choco", "install", "-y", "ffmpeg"], "Chocolatey")
+        return None
+
+    if sys.platform == "darwin":
+        if shutil.which("brew"):
+            return (["brew", "install", "ffmpeg"], "Homebrew")
+        return None
+
+    # Linux — escolhe o gerenciador da distro.
+    if shutil.which("apt-get"):
+        return (_sudo() + ["apt-get", "install", "-y", "ffmpeg"], "apt")
+    if shutil.which("apt"):
+        return (_sudo() + ["apt", "install", "-y", "ffmpeg"], "apt")
+    if shutil.which("dnf"):
+        return (_sudo() + ["dnf", "install", "-y", "ffmpeg"], "dnf")
+    if shutil.which("pacman"):
+        return (_sudo() + ["pacman", "-S", "--noconfirm", "ffmpeg"], "pacman")
+    if shutil.which("zypper"):
+        return (_sudo() + ["zypper", "install", "-y", "ffmpeg"], "zypper")
+    return None
+
+
+def ensure_ffmpeg(assume_yes: bool = False, log=print) -> str | None:
+    """
+    Garante o FFmpeg disponível. Se já existir, retorna o caminho. Se faltar:
+      1. detecta o gerenciador de pacotes do SO;
+      2. pede confirmação (a menos que assume_yes=True);
+      3. tenta instalar;
+      4. em qualquer falha, mostra o comando exato para o usuário rodar.
+
+    Retorna o caminho do FFmpeg (se ficou disponível) ou None.
+    """
+    found = find_ffmpeg()
+    if found:
+        return found
+
+    log("")
+    log("⚠️  FFmpeg não encontrado — ele é necessário para converter o áudio.")
+
+    install = ffmpeg_install_command()
+    if not install:
+        log("   Não foi possível detectar um gerenciador de pacotes para instalar automaticamente.")
+        log("   Instale o FFmpeg manualmente:")
+        if is_windows():
+            log("     • winget install Gyan.FFmpeg   (ou baixe em https://ffmpeg.org)")
+        elif sys.platform == "darwin":
+            log("     • brew install ffmpeg          (instale o Homebrew em https://brew.sh)")
+        else:
+            log("     • sudo apt install ffmpeg      (ou o gerenciador da sua distro)")
+        return None
+
+    cmd, label = install
+    cmd_str = " ".join(cmd)
+
+    if not assume_yes:
+        try:
+            resp = input(f"💡 Deseja instalar o FFmpeg agora via {label}? [{cmd_str}] (S/N): ").strip().upper()
+        except EOFError:
+            resp = "N"
+        if resp != "S":
+            log(f"   Ok. Para instalar depois, rode: {cmd_str}")
+            return None
+
+    log(f"📦 Instalando o FFmpeg via {label}...")
+    try:
+        result = subprocess.run(cmd)
+    except FileNotFoundError:
+        log(f"   Falha: comando não encontrado. Rode manualmente: {cmd_str}")
+        return None
+    except Exception as exc:
+        log(f"   Falha ao instalar: {exc}. Rode manualmente: {cmd_str}")
+        return None
+
+    if result.returncode != 0:
+        log(f"   A instalação retornou erro (código {result.returncode}). Rode manualmente: {cmd_str}")
+        return None
+
+    found = find_ffmpeg()
+    if found:
+        log(f"✅ FFmpeg instalado: {found}")
+    else:
+        log("   Instalação concluída, mas o FFmpeg ainda não foi localizado no PATH. "
+            "Talvez seja preciso reabrir o terminal.")
+    return found
+
+
 def open_folder(path: str) -> bool:
     """
     Abre uma pasta no gerenciador de arquivos do SO, cross-platform.

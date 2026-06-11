@@ -103,6 +103,22 @@ def install_python_deps() -> None:
     )
 
 
+def ensure_ffmpeg_present() -> None:
+    """
+    Garante o FFmpeg (necessário para o download). Reaproveita o ensure_ffmpeg()
+    do core/, que detecta o gerenciador do SO, oferece instalar e, se não der,
+    mostra o comando manual. Nunca interrompe o start do servidor.
+    """
+    core = str(ROOT / "core")
+    if core not in sys.path:
+        sys.path.insert(0, core)
+    try:
+        from platform_utils import ensure_ffmpeg
+        ensure_ffmpeg(log=lambda m: log(m) if m else None)
+    except Exception as exc:
+        log(f"Não foi possível verificar o FFmpeg automaticamente: {exc}")
+
+
 def install_node_deps() -> None:
     if not PACKAGE_JSON.exists():
         return
@@ -235,6 +251,7 @@ def main() -> int:
         try:
             install_python_deps()
             install_node_deps()
+            ensure_ffmpeg_present()
         except subprocess.CalledProcessError as e:
             log(f"Falha ao instalar dependências: {e}. Resolva e rode de novo.")
             return 1

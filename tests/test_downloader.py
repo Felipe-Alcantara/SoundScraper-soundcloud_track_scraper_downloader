@@ -129,6 +129,68 @@ class TestFfmpegPath:
         assert platform_utils.find_ffmpeg() is None
 
 
+class TestFfmpegInstallCommand:
+    """Testa ffmpeg_install_command() — detecção do instalador por SO (puro)."""
+
+    def _patch_os(self, monkeypatch, *, name, platform, available):
+        """Configura SO simulado e quais comandos existem no PATH."""
+        import platform_utils
+        monkeypatch.setattr(platform_utils.os, 'name', name)
+        monkeypatch.setattr(platform_utils.sys, 'platform', platform)
+        monkeypatch.setattr(
+            platform_utils.shutil, 'which',
+            lambda cmd: f"/usr/bin/{cmd}" if cmd in available else None,
+        )
+        # Em Linux/macOS, simula usuário não-root (para o sudo aparecer).
+        if name != 'nt':
+            monkeypatch.setattr(platform_utils.os, 'geteuid', lambda: 1000, raising=False)
+        return platform_utils
+
+    def test_windows_prefers_winget(self, monkeypatch):
+        pu = self._patch_os(monkeypatch, name='nt', platform='win32', available={'winget', 'choco'})
+        cmd, label = pu.ffmpeg_install_command()
+        assert label == 'winget'
+        assert 'Gyan.FFmpeg' in cmd
+
+    def test_windows_falls_back_to_choco(self, monkeypatch):
+        pu = self._patch_os(monkeypatch, name='nt', platform='win32', available={'choco'})
+        cmd, label = pu.ffmpeg_install_command()
+        assert label == 'Chocolatey'
+        assert cmd[:2] == ['choco', 'install']
+
+    def test_macos_uses_brew(self, monkeypatch):
+        pu = self._patch_os(monkeypatch, name='posix', platform='darwin', available={'brew'})
+        cmd, label = pu.ffmpeg_install_command()
+        assert label == 'Homebrew'
+        assert cmd == ['brew', 'install', 'ffmpeg']
+
+    def test_linux_apt_with_sudo(self, monkeypatch):
+        pu = self._patch_os(monkeypatch, name='posix', platform='linux', available={'apt-get', 'sudo'})
+        cmd, label = pu.ffmpeg_install_command()
+        assert label == 'apt'
+        assert cmd[0] == 'sudo'
+        assert 'apt-get' in cmd and 'ffmpeg' in cmd
+
+    def test_linux_pacman(self, monkeypatch):
+        pu = self._patch_os(monkeypatch, name='posix', platform='linux', available={'pacman', 'sudo'})
+        cmd, label = pu.ffmpeg_install_command()
+        assert label == 'pacman'
+        assert 'pacman' in cmd
+
+    def test_returns_none_without_known_manager(self, monkeypatch):
+        pu = self._patch_os(monkeypatch, name='posix', platform='linux', available=set())
+        assert pu.ffmpeg_install_command() is None
+
+    def test_ensure_ffmpeg_returns_existing(self, monkeypatch):
+        """Se o FFmpeg já existe, ensure_ffmpeg devolve o caminho sem instalar."""
+        import platform_utils
+        monkeypatch.setattr(platform_utils, 'find_ffmpeg', lambda: '/usr/bin/ffmpeg')
+        # Garante que NÃO tenta instalar.
+        monkeypatch.setattr(platform_utils, 'ffmpeg_install_command',
+                            lambda: (_ for _ in ()).throw(AssertionError("não deveria instalar")))
+        assert platform_utils.ensure_ffmpeg(log=lambda *_: None) == '/usr/bin/ffmpeg'
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  SEÇÃO 3: Configuração do ydl_opts
 # ══════════════════════════════════════════════════════════════════════
