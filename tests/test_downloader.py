@@ -83,38 +83,50 @@ class TestCorrigirNomeArquivo:
 # ══════════════════════════════════════════════════════════════════════
 
 class TestFfmpegPath:
-    """Testa a lógica de resolução do caminho do FFmpeg."""
+    """Testa a resolução portável do caminho do FFmpeg (core/platform_utils.find_ffmpeg)."""
 
-    def test_script_mode_ffmpeg_path(self, mock_not_frozen):
-        """No modo script, deve apontar para deps/ffmpeg/."""
-        script_dir = os.path.join('H:', 'projeto', 'core')
-        project_root = os.path.dirname(script_dir)
-        expected = os.path.join(project_root, 'deps', 'ffmpeg',
-                                'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
+    def test_binary_name_is_platform_aware(self):
+        """O nome do binário deve respeitar o SO (.exe só no Windows)."""
+        import platform_utils
 
-        # Simula a lógica do downloader
-        ffmpeg_path = os.path.join(project_root, 'deps', 'ffmpeg',
-                                   'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
-        assert ffmpeg_path == expected
+        name = platform_utils.ffmpeg_binary_name()
+        if os.name == 'nt':
+            assert name == 'ffmpeg.exe'
+        else:
+            assert name == 'ffmpeg'
 
-    def test_frozen_mode_ffmpeg_path(self, mock_frozen, temp_dir):
-        """No modo EXE, deve apontar para bundle/ffmpeg/bin/."""
+    def test_frozen_mode_prefers_bundle(self, mock_frozen, temp_dir):
+        """No modo EXE, deve apontar para o FFmpeg empacotado no bundle."""
+        import platform_utils
+
         mock_frozen(temp_dir)
-        expected = os.path.join(temp_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
+        bin_dir = os.path.join(temp_dir, 'ffmpeg', 'bin')
+        os.makedirs(bin_dir, exist_ok=True)
+        bundled = os.path.join(bin_dir, platform_utils.ffmpeg_binary_name())
+        with open(bundled, 'w') as f:
+            f.write('')
 
-        # Simula a lógica do downloader
-        bundle_dir: str = getattr(sys, '_MEIPASS', '')
-        ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
-        assert ffmpeg_path == expected
+        assert platform_utils.find_ffmpeg() == bundled
 
-    def test_ffmpeg_exists_in_project(self):
-        """O FFmpeg deve existir no projeto (dev environment)."""
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ffmpeg_path = os.path.join(project_root, 'deps', 'ffmpeg',
-                                   'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
-        assert os.path.exists(ffmpeg_path), (
-            f"FFmpeg não encontrado em: {ffmpeg_path}"
-        )
+    def test_falls_back_to_system_ffmpeg(self, mock_not_frozen, monkeypatch):
+        """Sem bundle/projeto, deve usar o FFmpeg do PATH do sistema."""
+        import platform_utils
+
+        # Garante que o bundle do projeto não resolve e força um 'which' fixo.
+        monkeypatch.setattr(platform_utils.shutil, 'which', lambda name: '/usr/bin/ffmpeg')
+        # Aponta a raiz do projeto para um diretório sem FFmpeg embutido.
+        monkeypatch.setattr(platform_utils, '_project_root', lambda: __import__('pathlib').Path(os.sep))
+
+        assert platform_utils.find_ffmpeg() == '/usr/bin/ffmpeg'
+
+    def test_returns_none_when_nothing_found(self, mock_not_frozen, monkeypatch):
+        """Sem bundle, sem projeto e sem PATH, retorna None (yt-dlp resolve sozinho)."""
+        import platform_utils
+
+        monkeypatch.setattr(platform_utils.shutil, 'which', lambda name: None)
+        monkeypatch.setattr(platform_utils, '_project_root', lambda: __import__('pathlib').Path(os.sep))
+
+        assert platform_utils.find_ffmpeg() is None
 
 
 # ══════════════════════════════════════════════════════════════════════
