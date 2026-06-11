@@ -78,18 +78,19 @@ Para quem prefere o terminal ou quer automatizar — **um único comando**, de q
 
 ```bash
 pip install -r deps/requirements.txt   # (uma vez) — ou deixe o próprio script instalar
-python run_cli.py                      # fluxo completo: coleta + download
-python run_cli.py scrape               # só coleta os links (gera o .txt)
-python run_cli.py download             # só baixa (lê o .txt já existente)
+python run_cli.py                      # fluxo completo: coleta + download (com loop "baixar mais?")
+python run_cli.py scrape               # só coleta os links (gera o .txt) e encerra
 ```
 
-O fluxo CLI (orquestrado por [run_cli.py](run_cli.py)):
-1. **Coleta** os links (`core/soundcloud_track_scraper.py`) — cole a URL e escolha entre as **7 opções** (Todas,
-   Populares, Faixas, Álbuns, Playlists, Republicações, Curtidas). O TXT de links é gerado automaticamente.
-2. **Baixa** o áudio (`core/soundcloud_tracks_downloader.py`) — seletor de pasta nativo (tkinter, com fallback
-   para texto), escolha do formato, download com metadados e abertura automática da pasta ao concluir.
+O fluxo completo (`python run_cli.py`):
+1. **Coleta** os links — cole a URL e escolha entre as **7 opções** (Todas, Populares, Faixas, Álbuns,
+   Playlists, Republicações, Curtidas). O TXT de links é gerado automaticamente.
+2. **Baixa** o áudio em seguida — seletor de pasta nativo (tkinter, com fallback para texto), escolha do
+   formato (FLAC/MP3), download com metadados e abertura automática da pasta. Ao final, pergunta se quer
+   baixar mais.
 
-> `run_cli.py` resolve os imports sozinho, então **não é preciso `cd core`**. Funciona em Windows, Linux e macOS.
+> `run_cli.py` resolve os imports sozinho, então **não é preciso `cd core`**. Funciona em Windows, Linux e
+> macOS. (Equivale a `python core/soundcloud_tracks_downloader.py`, mas roda de qualquer pasta.)
 
 ---
 
