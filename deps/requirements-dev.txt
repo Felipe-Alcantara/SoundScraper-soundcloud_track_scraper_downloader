@@ -1,0 +1,10 @@
+# Dependências de desenvolvimento do SoundScraper.
+# Inclui as de runtime + ferramentas de teste e build.
+
+-r requirements.txt
+
+# ── Testes ──────────────────────────────────────────────────────
+pytest
+
+# ── Build do executável (.exe) ──────────────────────────────────
+pyinstaller

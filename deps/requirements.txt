@@ -1,4 +1,12 @@
+# Dependências de runtime do SoundScraper (CLI + Web app)
+
+# ── Coleta e download ───────────────────────────────────────────
 selenium
 webdriver_manager
 yt-dlp
 mutagen
+
+# ── Web app (backend FastAPI + WebSocket) ───────────────────────
+fastapi
+uvicorn[standard]
+websockets
