@@ -1,233 +1,108 @@
 """
-Serviço de Scraping — Encapsula a lógica do soundcloud_track_scraper
-para uso via WebSocket, sem depender de input()/print() do console.
+Serviço de Scraping — adapta o pipeline de coleta (core.scraping) ao WebSocket,
+sem depender de input()/print() do console.
+
+Toda a lógica de coleta (Selenium, HTTP API v2, paginação, dedupe) vive em
+core/scraping/. Aqui só fazemos a ponte: normalizar a URL/opção e traduzir os
+logs/contadores do pipeline para os eventos do WebSocket que o frontend espera.
 """
 
 import asyncio
-import re
 import sys
-import os
-import time
 from pathlib import Path
 
-# Adiciona o diretório core/ ao path
+# Adiciona o diretório core/ ao path para importar o pacote scraping.
 _core_dir = str(Path(__file__).parent.parent.parent / "core")
 if _core_dir not in sys.path:
     sys.path.insert(0, _core_dir)
 
 
+def _normalize_profile_url(url: str) -> str | None:
+    """
+    Normaliza a entrada do usuário para 'https://soundcloud.com/<artista>'.
+    Aceita URL completa, 'soundcloud.com/x' ou só o username. None se inválida.
+    """
+    clean = url.strip().replace("http://", "").replace("https://", "").rstrip("/")
+    if not clean.startswith("soundcloud.com"):
+        clean = f"soundcloud.com/{clean}"
+    parts = clean.split("/")
+    if len(parts) < 2 or not parts[1]:
+        return None
+    # Mantém o caminho completo (perfil, ou link de set para álbum/playlist).
+    return f"https://{clean}"
+
+
 async def run_scraper(url: str, choice: str, send_event):
     """
-    Executa a coleta de faixas do SoundCloud.
-    
-    Args:
-        url: URL do perfil/playlist (ex: "soundcloud.com/artista" ou URL completa)
-        choice: Opção escolhida ('1'-'7')
-        send_event: Coroutine async para enviar eventos ao frontend.
-                    Recebe dict com {"type": ..., ...}
-    
-    Returns:
-        Lista de URLs coletadas.
+    Executa a coleta de faixas e emite eventos no contrato do WebSocket:
+        {"type": "log",   "message": ...}
+        {"type": "stage", "stage": ..., "message": ...}
+        {"type": "track", "url": ..., "index": ..., "total": ...}
+        {"type": "done",  "tracks": [...], "total": ...}
+        {"type": "error", "message": ...}
+    Retorna a lista de URLs coletadas.
     """
+    from scraping import ScraperConfig, get_choice
+    from scraping import pipeline
+
     await send_event({"type": "log", "message": "Iniciando coleta de faixas..."})
 
-    # ── Normalizar URL ──
-    clean_url = url.strip().replace('http://', '').replace('https://', '').rstrip('/')
-    if not clean_url.startswith('soundcloud.com'):
-        # Assume que é só o username
-        clean_url = f"soundcloud.com/{clean_url}"
-
-    parts = clean_url.split('/')
-    if len(parts) < 2 or not parts[1]:
+    profile_url = _normalize_profile_url(url)
+    if not profile_url:
         await send_event({"type": "error", "message": "URL inválida. Precisa conter o nome do artista."})
         return []
 
-    artist_base_url = f"https://{parts[0]}/{parts[1]}"
-    await send_event({"type": "log", "message": f"Artista: {artist_base_url}"})
-
-    # ── Montar URL final baseado na opção ──
-    soundcloud_link = artist_base_url
-    choice_names = {
-        '1': 'Todas as Faixas', '2': 'Faixas Populares', '3': 'Faixas',
-        '4': 'Álbuns', '5': 'Playlists', '6': 'Republicações', '7': 'Curtidas'
-    }
-
-    if choice == '2':
-        soundcloud_link += '/popular-tracks'
-    elif choice == '3':
-        soundcloud_link += '/tracks'
-    elif choice == '6':
-        soundcloud_link += '/reposts'
-    elif choice == '7':
-        soundcloud_link += '/likes'
-    # choice '4' e '5': URL já deve ser o link do álbum/playlist (vem no campo url)
-
-    await send_event({"type": "log", "message": f"Modo: {choice_names.get(choice, 'Desconhecido')}"})
-    await send_event({"type": "log", "message": f"URL: {soundcloud_link}"})
-
-    selenium_urls = set()
-    http_urls = set()
-
-    # ── ETAPA 1: Selenium ──
-    await send_event({"type": "stage", "stage": "selenium", "message": "Iniciando coleta via Selenium..."})
-
-    selenium_ok = False
-    driver = None
-
     try:
-        from browser_handler import get_webdriver, get_selenium_version
-        from selenium.webdriver.common.by import By
+        spec = get_choice(choice)
+    except ValueError as exc:
+        await send_event({"type": "error", "message": str(exc)})
+        return []
 
-        get_selenium_version()
-        driver = await asyncio.to_thread(get_webdriver)
-        selenium_ok = True
-        await send_event({"type": "log", "message": "✅ Navegador iniciado com sucesso"})
-    except Exception as e:
-        await send_event({"type": "log", "message": f"⚠️ Selenium não disponível: {e}"})
+    await send_event({"type": "log", "message": f"Artista/alvo: {profile_url}"})
+    await send_event({"type": "log", "message": f"Modo: {spec.name}"})
 
-    if selenium_ok and driver:
-        try:
-            await send_event({"type": "log", "message": f"Acessando {soundcloud_link}..."})
-            await asyncio.to_thread(driver.get, soundcloud_link)
-            await send_event({"type": "log", "message": "✅ Página carregada"})
+    # Fila para repassar os logs síncronos do pipeline (que roda em thread) ao WebSocket.
+    log_queue: asyncio.Queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
 
-            css_selector = (
-                "li.trackList__item a.trackItem__trackTitle"
-                if choice in ['4', '5']
-                else "a.soundTitle__title"
-            )
+    def on_log(message: str):
+        # Marca transições de método como "stage" (espelha o comportamento antigo).
+        if message.startswith("── Tentando"):
+            event = {"type": "stage", "stage": "method", "message": message}
+        else:
+            event = {"type": "log", "message": message}
+        loop.call_soon_threadsafe(log_queue.put_nowait, event)
 
-            # Scroll e coleta
-            await send_event({"type": "log", "message": "Rolando página para carregar faixas..."})
-            tracks = await asyncio.to_thread(
-                _scroll_and_collect, driver, css_selector, send_event_sync=None
-            )
+    config = ScraperConfig.from_env()
 
-            for track in tracks:
-                href = track.get_attribute("href")
-                if href:
-                    selenium_urls.add(href)
+    async def drain_logs():
+        while True:
+            event = await log_queue.get()
+            if event is None:
+                break
+            await send_event(event)
 
-            await send_event({
-                "type": "log",
-                "message": f"📊 Selenium coletou: {len(selenium_urls)} link(s)"
-            })
-            await asyncio.to_thread(driver.quit)
-        except Exception as e:
-            await send_event({"type": "log", "message": f"⚠️ Erro no Selenium: {e}"})
-            try:
-                await asyncio.to_thread(driver.quit)
-            except Exception:
-                pass
-
-    # ── ETAPA 2: HTTP API ──
-    await send_event({"type": "stage", "stage": "http_api", "message": "Verificando cobertura via API..."})
-
+    drainer = asyncio.create_task(drain_logs())
     try:
-        from browser_handler import http_fallback_scraper
-        result = await asyncio.to_thread(http_fallback_scraper, soundcloud_link, choice)
-        if result:
-            http_urls = set(result)
-            await send_event({
-                "type": "log",
-                "message": f"📡 HTTP API coletou: {len(http_urls)} link(s)"
-            })
-    except Exception as e:
-        await send_event({"type": "log", "message": f"⚠️ Erro na API HTTP: {e}"})
+        result = await asyncio.to_thread(
+            pipeline.collect, profile_url, choice, config, on_log, None
+        )
+    finally:
+        log_queue.put_nowait(None)
+        await drainer
 
-    # ── ETAPA 3: Mesclar ──
-    all_urls = selenium_urls | http_urls
-
-    if not all_urls:
+    urls = result.urls
+    if not urls:
         await send_event({"type": "error", "message": "Não foi possível coletar links por nenhum método."})
         return []
 
-    # Estatísticas
-    apenas_selenium = selenium_urls - http_urls
-    apenas_http = http_urls - selenium_urls
-    em_comum = selenium_urls & http_urls
-
-    stats = []
-    if selenium_urls:
-        stats.append(f"Selenium: {len(selenium_urls)}")
-    if http_urls:
-        stats.append(f"HTTP API: {len(http_urls)}")
-    if selenium_urls and http_urls:
-        stats.append(f"Em comum: {len(em_comum)}")
-        if apenas_http:
-            stats.append(f"Extras (API): {len(apenas_http)}")
-        if apenas_selenium:
-            stats.append(f"Extras (Selenium): {len(apenas_selenium)}")
-
-    await send_event({
-        "type": "log",
-        "message": f"📊 Estatísticas: {' | '.join(stats)}"
-    })
-
-    sorted_urls = sorted(all_urls)
-
-    # Envia cada track individualmente
-    for i, url in enumerate(sorted_urls, 1):
-        await send_event({
-            "type": "track",
-            "url": url,
-            "index": i,
-            "total": len(sorted_urls)
-        })
+    for i, track_url in enumerate(urls, 1):
+        await send_event({"type": "track", "url": track_url, "index": i, "total": len(urls)})
 
     await send_event({
         "type": "done",
-        "tracks": sorted_urls,
-        "total": len(sorted_urls),
-        "message": f"Coleta concluída! {len(sorted_urls)} faixa(s) encontrada(s)."
+        "tracks": urls,
+        "total": len(urls),
+        "message": f"Coleta concluída! {len(urls)} faixa(s) encontrada(s).",
     })
-
-    return sorted_urls
-
-
-def _scroll_and_collect(driver, css_selector, send_event_sync=None):
-    """
-    Rola a página e coleta tracks via Selenium.
-    Versão síncrona para rodar em thread.
-    """
-    from selenium.webdriver.common.by import By
-
-    scroll_pause = 4
-    max_attempts = 5
-    num_tracks = 0
-    attempts = 0
-    tracks = []
-
-    while attempts < max_attempts:
-        # Tenta clicar "Show more"
-        try:
-            show_more_selectors = [
-                "a.showMore", "button.showMore",
-                "a[class*='ShowMore']", "button[class*='ShowMore']",
-                "a.compactTrackList__moreLink",
-            ]
-            for sel in show_more_selectors:
-                buttons = driver.find_elements(By.CSS_SELECTOR, sel)
-                for btn in buttons:
-                    if btn.is_displayed():
-                        try:
-                            btn.click()
-                            time.sleep(scroll_pause)
-                        except Exception:
-                            pass
-        except Exception:
-            pass
-
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(scroll_pause)
-
-        tracks = driver.find_elements(By.CSS_SELECTOR, css_selector)
-        new_num_tracks = len(tracks)
-
-        if new_num_tracks == num_tracks:
-            attempts += 1
-        else:
-            num_tracks = new_num_tracks
-            attempts = 0
-
-    return tracks
+    return urls

@@ -43,8 +43,15 @@ def main():
     dist_dir = os.path.join(project_root, 'dist')
     build_dir = os.path.join(project_root, 'build')
 
-    # Módulos do projeto
-    modules = ['soundcloud_track_scraper.py', 'browser_handler.py', 'crash_logger.py']
+    # Módulos do projeto (arquivos soltos em core/)
+    modules = [
+        'soundcloud_track_scraper.py',
+        'browser_handler.py',
+        'crash_logger.py',
+        'platform_utils.py',
+    ]
+    # Pacote de scraping (core/scraping/) — empacotado inteiro via --add-data.
+    scraping_pkg = os.path.join(core_dir, 'scraping')
 
     # ══════════════════════════════════════════════════════════════
     #  2. Validações
@@ -166,6 +173,10 @@ def main():
         '--add-data', f'{os.path.join(core_dir, "soundcloud_track_scraper.py")};.',
         '--add-data', f'{os.path.join(core_dir, "browser_handler.py")};.',
         '--add-data', f'{os.path.join(core_dir, "crash_logger.py")};.',
+        '--add-data', f'{os.path.join(core_dir, "platform_utils.py")};.',
+
+        # Dados — pacote de scraping (core/scraping/ → scraping/ no bundle)
+        '--add-data', f'{scraping_pkg};scraping',
 
         # Dados — FFmpeg
         '--add-data', f'{ffmpeg_bin};ffmpeg\\bin',
@@ -174,6 +185,8 @@ def main():
         '--hidden-import', 'soundcloud_track_scraper',
         '--hidden-import', 'browser_handler',
         '--hidden-import', 'crash_logger',
+        '--hidden-import', 'platform_utils',
+        '--collect-submodules', 'scraping',
         '--hidden-import', 'selenium',
         '--hidden-import', 'selenium.webdriver.common.selenium_manager',
         '--hidden-import', 'yt_dlp',

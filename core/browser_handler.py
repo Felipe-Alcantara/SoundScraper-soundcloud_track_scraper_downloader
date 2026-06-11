@@ -15,6 +15,9 @@ import json
 import time
 import shutil
 
+# Parsing centralizado (fonte única de verdade, testável offline).
+from scraping import parsers
+
 
 # ══════════════════════════════════════════════════════════════════════
 #  SEÇÃO 1: Localização de binários (Chrome / ChromeDriver)
@@ -363,9 +366,13 @@ def _http_get(url, headers=None):
 
 
 def _extract_client_id(html_content):
-    """Extrai o client_id do SoundCloud a partir dos scripts da página."""
+    """
+    Extrai o client_id do SoundCloud a partir dos scripts da página.
+    O parsing (regex de scripts e do client_id) vive em scraping.parsers; aqui só
+    fazemos o I/O (download dos scripts via _http_get, que os testes mockam).
+    """
     print("🔑 Procurando client_id nos scripts do SoundCloud...")
-    script_urls = re.findall(r'src="(https://a-v2\.sndcdn\.com/assets/[^"]+\.js)"', html_content)
+    script_urls = parsers.find_script_urls(html_content)
     total_scripts = len(script_urls)
     print(f"   📜 {total_scripts} scripts encontrados na página.")
     print(f"   🔍 Analisando os últimos {min(3, total_scripts)} scripts...")
@@ -374,17 +381,16 @@ def _extract_client_id(html_content):
     for i, script_url in enumerate(script_urls[-3:], 1):
         print(f"   ⏳ [{i}/3] Analisando script: ...{script_url[-40:]}")
         js_content = _http_get(script_url)
+        client_id = parsers.extract_client_id_from_js(js_content or "")
+        if client_id:
+            print(f"   ✅ client_id encontrado no script {i}!")
+            print("")
+            return client_id
         if js_content:
-            match = re.search(r'client_id\s*[:=]\s*["\']([a-zA-Z0-9]{32})["\']', js_content)
-            if match:
-                print(f"   ✅ client_id encontrado no script {i}!")
-                print("")
-                return match.group(1)
-            else:
-                print(f"   ❌ client_id não encontrado neste script.")
+            print(f"   ❌ client_id não encontrado neste script.")
         else:
             print(f"   ⚠️  Não foi possível baixar este script.")
-    
+
     print("")
     print("❌ Não foi possível encontrar o client_id em nenhum script.")
     print("")
@@ -400,14 +406,13 @@ def _resolve_soundcloud_url(url, client_id):
         'Accept': 'application/json',
     })
     if response:
-        try:
-            data = json.loads(response)
+        data = parsers.parse_resolved_user(response)
+        if data is not None:
             kind = data.get('kind', 'desconhecido')
             print(f"   ✅ Resposta recebida! Tipo: {kind}")
             return data
-        except json.JSONDecodeError:
-            print("   ⚠️  Resposta da API não é um JSON válido.")
-            return None
+        print("   ⚠️  Resposta da API não é um JSON válido.")
+        return None
     print("   ❌ Sem resposta da API.")
     return None
 
@@ -441,31 +446,20 @@ def _get_collection_tracks(user_id, collection_type, client_id, limit=200):
             print("   ⚠️  Falha ao carregar página. Encerrando coleta.")
             break
 
-        try:
-            data = json.loads(response)
-        except json.JSONDecodeError:
-            print("   ⚠️  Resposta inválida da API. Encerrando coleta.")
-            break
-
-        collection = data.get('collection', [])
-        if not collection:
+        # Parsing centralizado (scraping.parsers) — devolve ([], None) em JSON inválido.
+        page_urls, next_href = parsers.parse_collection_page(response, collection_type)
+        if not page_urls:
             print("   ℹ️  Nenhuma faixa adicional encontrada nesta página.")
             break
 
-        tracks_nesta_pagina = 0
-        for item in collection:
-            track = item.get('track', item) if collection_type == 'reposts' else item
-            permalink_url = track.get('permalink_url')
-            if permalink_url:
-                tracks.append(permalink_url)
-                tracks_nesta_pagina += 1
-                print(f"      🔗 {permalink_url}")
+        for permalink_url in page_urls:
+            tracks.append(permalink_url)
+            print(f"      🔗 {permalink_url}")
 
-        print(f"   ✅ {tracks_nesta_pagina} faixa(s) encontrada(s) na página {page}")
+        print(f"   ✅ {len(page_urls)} faixa(s) encontrada(s) na página {page}")
         print(f"   📊 Total acumulado: {len(tracks)} faixa(s)")
         print("")
 
-        next_href = data.get('next_href')
         if next_href and 'client_id' not in next_href:
             next_href += f"&client_id={client_id}"
 
