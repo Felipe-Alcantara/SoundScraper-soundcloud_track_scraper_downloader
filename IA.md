@@ -105,9 +105,12 @@ do build do Windows).
 sistema (`apt install ffmpeg` / `brew install ffmpeg`).
 [2026-06-11] O empacotamento via PyInstaller (`tools/build_exe.py`/`.spec`) gera **EXE de Windows**; build para
 Linux/macOS é um trabalho futuro.
-[2026-06-11] `core/soundcloud_tracks_downloader.py` chama `main()` no escopo global (sem guarda `__main__`) —
-é o entry point do PyInstaller e é importado pelos testes via conftest. Mudar isso exige re-validar o build do
-EXE; deixado como pendência intencional.
+[2026-06-11] CLI tem entry point único na raiz: `run_cli.py` (coleta + download), que resolve o sys.path para
+core/ — não precisa `cd core`. Subcomandos: `scrape`, `download`.
+
+[2026-06-11] `core/soundcloud_tracks_downloader.py` agora tem guarda `if __name__ == '__main__': main()` — roda
+direto/no EXE (PyInstaller executa como __main__) e é importável sem disparar o fluxo interativo (necessário
+para o run_cli.py). Resolve a pendência anterior do main() no escopo global.
 
 ---
 

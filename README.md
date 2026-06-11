@@ -74,18 +74,22 @@ formato (FLAC/MP3) → acompanhe coleta e download em tempo real.
 
 ## ⌨️ Modo CLI
 
-Para quem prefere o terminal ou quer automatizar:
+Para quem prefere o terminal ou quer automatizar — **um único comando**, de qualquer pasta do projeto:
 
 ```bash
-pip install -r deps/requirements.txt        # (uma vez) — ou deixe o próprio script instalar
-python core/soundcloud_tracks_downloader.py  # baixa as faixas listadas
+pip install -r deps/requirements.txt   # (uma vez) — ou deixe o próprio script instalar
+python run_cli.py                      # fluxo completo: coleta + download
+python run_cli.py scrape               # só coleta os links (gera o .txt)
+python run_cli.py download             # só baixa (lê o .txt já existente)
 ```
 
-O fluxo CLI:
-1. Coleta os links (`core/soundcloud_track_scraper.py`) — cole a URL e escolha entre as **7 opções** (Todas,
+O fluxo CLI (orquestrado por [run_cli.py](run_cli.py)):
+1. **Coleta** os links (`core/soundcloud_track_scraper.py`) — cole a URL e escolha entre as **7 opções** (Todas,
    Populares, Faixas, Álbuns, Playlists, Republicações, Curtidas). O TXT de links é gerado automaticamente.
-2. Baixa o áudio (`core/soundcloud_tracks_downloader.py`) — seletor de pasta nativo (tkinter, com fallback para
-   texto), escolha do formato, download com metadados e abertura automática da pasta ao concluir.
+2. **Baixa** o áudio (`core/soundcloud_tracks_downloader.py`) — seletor de pasta nativo (tkinter, com fallback
+   para texto), escolha do formato, download com metadados e abertura automática da pasta ao concluir.
+
+> `run_cli.py` resolve os imports sozinho, então **não é preciso `cd core`**. Funciona em Windows, Linux e macOS.
 
 ---
 
@@ -122,7 +126,8 @@ SoundScraper/
 │   ├── build_exe.py · soundcloud_tracks_downloader.spec · icon/
 │
 ├── tests/                         # 🧪 Suíte de testes (155 testes)
-├── start_app.py                   # ▶️ Inicialização padrão (instala + builda + sobe + abre)
+├── start_app.py                   # ▶️ Inicialização padrão da Web (instala + builda + sobe + abre)
+├── run_cli.py                     # ⌨️ Entry point do modo CLI (coleta + download no terminal)
 ├── run_web.py                     # launcher simples do backend
 └── README.md · LICENSE · .gitignore
 ```
