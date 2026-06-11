@@ -22,19 +22,15 @@ DOWNLOAD_HEARTBEAT_SECONDS = int(os.getenv("SOUNDSCRAPER_DOWNLOAD_HEARTBEAT_SECO
 
 
 def _get_ffmpeg_path():
-    """Retorna o caminho do FFmpeg."""
-    if getattr(sys, 'frozen', False):
-        bundle_dir: str = getattr(sys, '_MEIPASS', '')
-        return os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
-    else:
-        project_root = Path(__file__).parent.parent.parent
-        return str(
-            project_root / 'deps' / 'ffmpeg' /
-            'ffmpeg-8.0-essentials_build' / 'bin' / 'ffmpeg.exe'
-        )
+    """
+    Retorna o caminho do FFmpeg de forma portável (bundle EXE → projeto → PATH do
+    sistema), ou None se não encontrar. Cross-platform (Windows, Linux, macOS).
+    """
+    from platform_utils import find_ffmpeg
+    return find_ffmpeg()
 
 
-def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str) -> dict:
+def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str | None) -> dict:
     """Monta as opções do yt-dlp."""
     ffmpeg_extract = {
         'key': 'FFmpegExtractAudio',
@@ -43,7 +39,7 @@ def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str) -> dict:
     if audio_format == 'mp3':
         ffmpeg_extract['preferredquality'] = '320'
 
-    return {
+    opts = {
         'format': 'bestaudio/best',
         'outtmpl': os.path.join(output_dir, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
         'restrictfilenames': True,
@@ -54,7 +50,6 @@ def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str) -> dict:
         ],
         'writethumbnail': True,
         'prefer_ffmpeg': True,
-        'ffmpeg_location': ffmpeg_path,
         'socket_timeout': YTDLP_SOCKET_TIMEOUT,
         'retries': YTDLP_RETRIES,
         'fragment_retries': YTDLP_RETRIES,
@@ -63,6 +58,10 @@ def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str) -> dict:
         'quiet': True,
         'no_warnings': True,
     }
+    # Só fixa o ffmpeg_location quando temos um caminho; senão deixa o yt-dlp resolver pelo PATH.
+    if ffmpeg_path:
+        opts['ffmpeg_location'] = ffmpeg_path
+    return opts
 
 
 def _corrigir_nomes(output_dir: str) -> list:
@@ -204,12 +203,12 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
     ffmpeg_path = _get_ffmpeg_path()
     ydl_opts = _get_ydl_opts(output_dir, audio_format, ffmpeg_path)
 
-    if os.path.exists(ffmpeg_path):
+    if ffmpeg_path:
         await send_event({"type": "log", "message": f"FFmpeg detectado: {ffmpeg_path}"})
     else:
         await send_event({
             "type": "log",
-            "message": f"⚠️ FFmpeg não encontrado em {ffmpeg_path}. Tentando FFmpeg do sistema."
+            "message": "⚠️ FFmpeg não localizado no projeto nem no PATH. O yt-dlp tentará o FFmpeg do sistema."
         })
 
     sucessos = 0

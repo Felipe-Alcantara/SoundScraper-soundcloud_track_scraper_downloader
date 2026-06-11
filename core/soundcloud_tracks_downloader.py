@@ -7,6 +7,7 @@ from typing import Any, cast
 # Inicializa o sistema de logging ANTES de tudo
 # Isso garante que qualquer crash será capturado e salvo em arquivo
 from crash_logger import inicializar_logger
+from platform_utils import find_ffmpeg, open_folder
 session_log = inicializar_logger()
 
 # Função para verificar e instalar dependências
@@ -353,14 +354,14 @@ def main():
         if audio_format == 'mp3':
             ffmpeg_extract_audio['preferredquality'] = '320'
 
-        # Verifica se o script está rodando em um ambiente "congelado" (após ser convertido para exe)
-        if getattr(sys, 'frozen', False):
-            bundle_dir = getattr(sys, '_MEIPASS', os.getcwd())
-            ffmpeg_path = os.path.join(bundle_dir, 'ffmpeg', 'bin', 'ffmpeg.exe')
+        # Localiza o FFmpeg de forma portável (bundle EXE → projeto → PATH do sistema).
+        # Funciona em Windows, Linux e macOS.
+        ffmpeg_path = find_ffmpeg()
+        if ffmpeg_path:
+            print(f"🎥  FFmpeg: {ffmpeg_path}")
         else:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(script_dir)
-            ffmpeg_path = os.path.join(project_root, 'deps', 'ffmpeg', 'ffmpeg-8.0-essentials_build', 'bin', 'ffmpeg.exe')
+            print("⚠️  FFmpeg não localizado no projeto nem no PATH; o yt-dlp tentará o do sistema.")
+        print("")
 
         # Opções de download
         ydl_opts = {
@@ -379,8 +380,10 @@ def main():
             ],
             'writethumbnail': True,
             'prefer_ffmpeg': True,
-            'ffmpeg_location': ffmpeg_path,
         }
+        # Só fixa o ffmpeg_location quando temos um caminho; senão deixa o yt-dlp resolver pelo PATH.
+        if ffmpeg_path:
+            ydl_opts['ffmpeg_location'] = ffmpeg_path
 
         # Banner de início do download
         print("═" * 70)
@@ -425,14 +428,11 @@ def main():
         print("═" * 70)
         print("")
 
-        # Abre a pasta de destino no explorador de arquivos
-        try:
-            abs_folder = os.path.abspath(output_folder)
-            os.startfile(abs_folder)
+        # Abre a pasta de destino no gerenciador de arquivos (cross-platform)
+        abs_folder = os.path.abspath(output_folder)
+        if open_folder(abs_folder):
             print(f"📂 Pasta aberta: {abs_folder}")
             print("")
-        except Exception:
-            pass
 
         # Perguntar se quer baixar mais
         print("─" * 70)

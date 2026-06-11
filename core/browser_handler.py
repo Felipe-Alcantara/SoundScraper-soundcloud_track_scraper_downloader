@@ -75,7 +75,33 @@ def _find_chrome_binary():
             print(f"   ✅ ENCONTRADO! Chrome do sistema em: {chrome_path}")
             print("")
             return chrome_path, "sistema"
-    print("   ❌ Chrome do sistema não encontrado.")
+    print("   ❌ Chrome do sistema não encontrado (locais do Windows).")
+    print("")
+
+    # Linux / macOS — procura no PATH e em locais comuns de instalação
+    print("🐧🍎 Verificando Chrome/Chromium no PATH e em locais Linux/macOS...")
+    for binary in ('google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'chrome'):
+        found = shutil.which(binary)
+        if found:
+            print(f"   ✅ ENCONTRADO! Chrome no PATH: {found}")
+            print("")
+            return found, "sistema"
+
+    unix_chrome_paths = [
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/snap/bin/chromium",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ]
+    for chrome_path in unix_chrome_paths:
+        if os.path.exists(chrome_path):
+            print(f"   ✅ ENCONTRADO! Chrome em: {chrome_path}")
+            print("")
+            return chrome_path, "sistema"
+    print("   ❌ Chrome/Chromium não encontrado em Linux/macOS.")
     print("")
 
     print("⚠️  Nenhuma instalação do Chrome foi localizada.")
