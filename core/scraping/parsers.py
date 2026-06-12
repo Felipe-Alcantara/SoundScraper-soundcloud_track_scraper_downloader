@@ -63,17 +63,33 @@ def parse_collection_page(payload: str, collection_type: str = "") -> tuple[list
 
 def parse_set(payload: str) -> tuple[list[str], list[int], str]:
     """
-    Faz o parsing de um álbum/playlist resolvido pela API v2.
+    Faz o parsing de um álbum/playlist resolvido pela API v2 (a partir do texto JSON).
+
+    Returns:
+        (urls_diretas, ids_para_resolver, set_title) — ver parse_set_dict.
+        Em payload inválido devolve ([], [], "") — fail-safe.
+    """
+    try:
+        data = json.loads(payload)
+    except (json.JSONDecodeError, TypeError):
+        return [], [], ""
+    return parse_set_dict(data)
+
+
+def parse_set_dict(data: dict | None) -> tuple[list[str], list[int], str]:
+    """
+    Faz o parsing de um álbum/playlist já desserializado (dict da API v2).
+
+    Evita o round-trip dict→texto→dict quando o caller já tem o dict em mãos
+    (ex.: resposta de /resolve). parse_set() delega para cá.
 
     Returns:
         (urls_diretas, ids_para_resolver, set_title)
         urls_diretas: faixas que já trazem permalink_url.
         ids_para_resolver: ids de faixas sem permalink (precisam de uma chamada extra).
-        set_title: título do conjunto (ou "" se ausente/ inválido).
+        set_title: título do conjunto (ou "" se ausente/inválido).
     """
-    try:
-        data = json.loads(payload)
-    except (json.JSONDecodeError, TypeError):
+    if not isinstance(data, dict):
         return [], [], ""
 
     urls: list[str] = []

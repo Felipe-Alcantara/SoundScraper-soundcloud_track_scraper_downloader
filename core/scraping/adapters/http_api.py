@@ -29,15 +29,53 @@ _API_HEADERS = {
 }
 _API_BASE = "https://api-v2.soundcloud.com"
 
+# Rate-limit / erros transitórios: respeita Retry-After (429) e faz backoff
+# exponencial em 5xx. 4xx definitivo não é repetido (não adianta).
+_BACKOFF_BASE = 2.0
+_MAX_RETRIES = 3
+_MAX_BACKOFF_S = 30.0
+
 
 def http_get(url: str, headers: dict | None = None, timeout: float = 30.0) -> str | None:
-    """GET simples via urllib. Retorna o corpo como texto, ou None em erro."""
+    """
+    GET via urllib. Retorna o corpo como texto, ou None em erro.
+
+    Respeita rate-limit (429 com Retry-After) e tenta novamente em erros
+    transitórios (5xx) com backoff exponencial. 4xx definitivo (exceto 429)
+    não é repetido. Fail-safe: esgotadas as tentativas, devolve None.
+    """
     req = Request(url, headers=headers or {"User-Agent": _DEFAULT_UA})
-    try:
-        with urlopen(req, timeout=timeout) as response:
-            return response.read().decode("utf-8", errors="replace")
-    except (URLError, HTTPError, TimeoutError):
-        return None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            with urlopen(req, timeout=timeout) as response:
+                return response.read().decode("utf-8", errors="replace")
+        except HTTPError as exc:
+            wait = _retry_wait(exc, attempt)
+            if wait is None or attempt == _MAX_RETRIES - 1:
+                return None  # 4xx definitivo, ou tentativas esgotadas
+            time.sleep(wait)
+        except (URLError, TimeoutError):
+            return None
+    return None
+
+
+def _retry_wait(exc: HTTPError, attempt: int) -> float | None:
+    """
+    Segundos a esperar antes de repetir, ou None se o erro não é repetível.
+
+    429 → respeita Retry-After (senão, backoff). 5xx → backoff exponencial.
+    Demais 4xx → None (não repete).
+    """
+    if exc.code == 429:
+        retry_after = 0
+        try:
+            retry_after = int(exc.headers.get("Retry-After", 0) or 0)
+        except (TypeError, ValueError):
+            retry_after = 0
+        return float(retry_after) or min(_BACKOFF_BASE ** attempt, _MAX_BACKOFF_S)
+    if exc.code >= 500:
+        return min(_BACKOFF_BASE ** attempt, _MAX_BACKOFF_S)
+    return None
 
 
 def fetch_client_id(timeout: float = 30.0) -> str | None:
@@ -90,9 +128,7 @@ class HttpApiAdapter(SourceAdapter):
         if not data:
             log("❌ Não foi possível resolver o álbum/playlist.")
             return []
-        urls, pending_ids, set_title = parsers.parse_set(
-            __import__("json").dumps(data)
-        )
+        urls, pending_ids, set_title = parsers.parse_set_dict(data)
         log(f"📀 {set_title or 'Álbum/Playlist'}: {len(urls)} faixa(s) diretas, "
             f"{len(pending_ids)} a resolver.")
 

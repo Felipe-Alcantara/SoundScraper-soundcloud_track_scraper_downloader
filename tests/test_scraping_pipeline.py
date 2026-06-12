@@ -197,3 +197,119 @@ class TestPipeline:
     def test_unknown_choice_propagates(self):
         with pytest.raises(ValueError):
             pipeline.collect("https://soundcloud.com/x", "99", ScraperConfig())
+
+
+# ── Paginação por cursor (loop seguindo next_href) ──────────────────
+
+from scraping.adapters import http_api
+
+
+def _page(urls, next_href):
+    """Monta o corpo JSON de uma página de coleção com next_href explícito."""
+    import json as _json
+    return _json.dumps({
+        "collection": [{"permalink_url": u} for u in urls],
+        "next_href": next_href,
+    })
+
+
+class TestCursorPagination:
+    """Cobre o item 'Paginação por cursor' da matriz de testes do guia."""
+
+    def test_follows_next_href_until_end(self, monkeypatch):
+        """Segue next_href por várias páginas e para quando ele vira null."""
+        # 3 páginas encadeadas; a última traz next_href=null (fim).
+        responses = {
+            "page-1": _page(["https://sc.com/t1", "https://sc.com/t2"], "page-2"),
+            "page-2": _page(["https://sc.com/t3", "https://sc.com/t4"], "page-3"),
+            "page-3": _page(["https://sc.com/t5"], None),
+        }
+
+        def fake_get(url, headers=None, timeout=30.0):
+            # resolve do perfil → usuário com id
+            if "/resolve" in url:
+                return SAMPLE_USER_RESOLVE_RESPONSE
+            # primeira página da coleção (offset=0) ou as páginas encadeadas
+            if "offset=0" in url:
+                return responses["page-1"]
+            for key in ("page-2", "page-3"):
+                if key in url:
+                    return responses[key]
+            return None
+
+        monkeypatch.setattr(http_api, "fetch_client_id", lambda timeout=30.0: "x" * 32)
+        monkeypatch.setattr(http_api, "http_get", fake_get)
+
+        adapter = http_api.HttpApiAdapter()
+        tracks = adapter.collect(
+            "https://soundcloud.com/artist", registry.get_choice("3"), ScraperConfig()
+        )
+        assert [t.url for t in tracks] == [
+            "https://sc.com/t1", "https://sc.com/t2",
+            "https://sc.com/t3", "https://sc.com/t4",
+            "https://sc.com/t5",
+        ]
+
+    def test_respects_max_pages_ceiling(self, monkeypatch):
+        """Mesmo com next_href infinito, para no teto de páginas."""
+        def fake_get(url, headers=None, timeout=30.0):
+            if "/resolve" in url:
+                return SAMPLE_USER_RESOLVE_RESPONSE
+            return _page(["https://sc.com/loop"], "next-forever")  # nunca acaba
+
+        monkeypatch.setattr(http_api, "fetch_client_id", lambda timeout=30.0: "x" * 32)
+        monkeypatch.setattr(http_api, "http_get", fake_get)
+        monkeypatch.setattr(http_api.time, "sleep", lambda *_: None)  # sem espera real
+
+        config = ScraperConfig(max_pages=3, max_tracks=1000)
+        adapter = http_api.HttpApiAdapter()
+        tracks = adapter.collect(
+            "https://soundcloud.com/artist", registry.get_choice("3"), config
+        )
+        assert len(tracks) == 3  # 1 faixa por página × 3 páginas (teto)
+
+    def test_respects_max_tracks_ceiling(self, monkeypatch):
+        """Para no teto de faixas, truncando a página que ultrapassa."""
+        def fake_get(url, headers=None, timeout=30.0):
+            if "/resolve" in url:
+                return SAMPLE_USER_RESOLVE_RESPONSE
+            urls = [f"https://sc.com/t{i}" for i in range(10)]
+            return _page(urls, "next-forever")
+
+        monkeypatch.setattr(http_api, "fetch_client_id", lambda timeout=30.0: "x" * 32)
+        monkeypatch.setattr(http_api, "http_get", fake_get)
+        monkeypatch.setattr(http_api.time, "sleep", lambda *_: None)
+
+        config = ScraperConfig(max_pages=100, max_tracks=5)
+        adapter = http_api.HttpApiAdapter()
+        tracks = adapter.collect(
+            "https://soundcloud.com/artist", registry.get_choice("3"), config
+        )
+        assert len(tracks) == 5  # truncado em max_tracks
+
+
+# ── Rate-limit / backoff no http_get ────────────────────────────────
+
+class _FakeHTTPError(Exception):
+    """Imita urllib.error.HTTPError o suficiente para _retry_wait."""
+    def __init__(self, code, retry_after=None):
+        self.code = code
+        self.headers = {"Retry-After": str(retry_after)} if retry_after is not None else {}
+
+
+class TestRetryWait:
+    """Cobre o item 'Backoff / rate-limit' da matriz de testes do guia."""
+
+    def test_429_respects_retry_after(self):
+        assert http_api._retry_wait(_FakeHTTPError(429, retry_after=7), attempt=0) == 7.0
+
+    def test_429_without_header_uses_backoff(self):
+        # attempt=2 → 2.0 ** 2 = 4.0
+        assert http_api._retry_wait(_FakeHTTPError(429), attempt=2) == 4.0
+
+    def test_5xx_uses_backoff(self):
+        assert http_api._retry_wait(_FakeHTTPError(503), attempt=1) == 2.0
+
+    def test_4xx_is_not_retried(self):
+        assert http_api._retry_wait(_FakeHTTPError(404), attempt=0) is None
+        assert http_api._retry_wait(_FakeHTTPError(403), attempt=0) is None
