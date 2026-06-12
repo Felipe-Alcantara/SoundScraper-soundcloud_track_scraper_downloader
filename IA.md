@@ -20,7 +20,7 @@ funcionar **cross-platform** (Windows, Linux, macOS).
 - [2026-06-11] ✅ Portabilidade cross-platform (FFmpeg, abertura de pasta, detecção de Chrome).
 - [2026-06-11] ✅ `start_app.py` padrão (instala + builda + sobe + abre, com restart/--dev/--no-browser/--no-install).
 - [2026-06-11] ✅ Refatoração da coleta no padrão de scraping (DTO + adapters + registry + pipeline).
-- [2026-06-11] ✅ README reescrito (Web + CLI) e suíte de testes honesta (155 passando).
+- [2026-06-11] ✅ README reescrito (Web + CLI) e suíte de testes honesta (162 passando).
 
 ---
 
@@ -68,7 +68,8 @@ a um coletor de links para download.
 
 ## 🧪 TESTES IMPORTANTES
 
-[2026-06-11] ✅ Suíte completa: 155 testes, offline (mocking + fixtures sanitizadas), ~2s.
+[2026-06-12] ✅ Suíte completa: 162 testes, offline (mocking + fixtures sanitizadas), ~2s
+(test_downloader cresceu para 37; contagem revisada de 155 → 162).
 [2026-06-11] ✅ `test_scraping_pipeline.py` (22): parsers da API v2, registry das 7 opções, pipeline
 fail-safe/fallback — sem rede.
 [2026-06-11] ✅ `test_downloader.py::TestFfmpegPath`: agora exercita `platform_utils.find_ffmpeg()` de verdade
@@ -119,7 +120,7 @@ para o run_cli.py). Resolve a pendência anterior do main() no escopo global.
 [2026-06-11] CONTEXTO: aplicar o GUIA-SCRAPING-MULTIFORMATO sem quebrar os 41 testes de `browser_handler` nem o
 build do EXE. ALTERNATIVAS: (a) reescrever browser_handler e migrar tudo para os adapters; (b) criar o pacote
 `scraping/` novo e fazer browser_handler delegar o parsing. DECISÃO: (b) — parsing centralizado em
-`scraping.parsers`, funções públicas de browser_handler preservadas. VALIDAÇÃO: 155 testes verdes; backend e CLI
+`scraping.parsers`, funções públicas de browser_handler preservadas. VALIDAÇÃO: 162 testes verdes; backend e CLI
 importam; `start_app.py` sobe e responde `/api/info` no Linux.
 
 [2026-06-11] CONTEXTO: ordem dos métodos de coleta. DECISÃO: HTTP API v2 primeiro (mais fácil/robusto, sem

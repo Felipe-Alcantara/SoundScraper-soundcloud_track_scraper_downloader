@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-powered-red.svg)](https://github.com/yt-dlp/yt-dlp)
-[![Tests](https://img.shields.io/badge/Tests-155%20passing-brightgreen.svg)](#-testes-automatizados)
+[![Tests](https://img.shields.io/badge/Tests-162%20passing-brightgreen.svg)](#-testes-automatizados)
 [![Cross-platform](https://img.shields.io/badge/SO-Windows%20%7C%20Linux%20%7C%20macOS-informational.svg)](#-requisitos)
 
 **Ferramenta para arquivamento de coleções musicais do SoundCloud — com interface Web e CLI.**
@@ -126,7 +126,7 @@ SoundScraper/
 ├── tools/                         # 🏗️ Build do executável
 │   ├── build_exe.py · soundcloud_tracks_downloader.spec · icon/
 │
-├── tests/                         # 🧪 Suíte de testes (155 testes)
+├── tests/                         # 🧪 Suíte de testes (162 testes)
 ├── start_app.py                   # ▶️ Inicialização padrão da Web (instala + builda + sobe + abre)
 ├── run_cli.py                     # ⌨️ Entry point do modo CLI (coleta + download no terminal)
 ├── run_web.py                     # launcher simples do backend
@@ -167,7 +167,7 @@ O backend (porta 8000) expõe:
 
 ## 🧪 Testes automatizados
 
-Suíte com **155 testes**, todos offline (sem rede ou acesso real ao SoundCloud — usam mocking e fixtures
+Suíte com **162 testes**, todos offline (sem rede ou acesso real ao SoundCloud — usam mocking e fixtures
 sanitizadas) e executando em segundos.
 
 ```bash
@@ -180,7 +180,7 @@ python -m pytest tests/ -v
 | `test_browser_handler.py` | WebDriver, I/O HTTP, client_id, rotas da API | 41 |
 | `test_scraper.py` | validação de URL, opções, scroll/collect, save TXT | 31 |
 | `test_crash_logger.py` | crash handler, SessionLogger, limpeza de logs | 31 |
-| `test_downloader.py` | formato, correção de nomes, FFmpeg portável, .spec | 30 |
+| `test_downloader.py` | formato, correção de nomes, FFmpeg portável, .spec | 37 |
 | `test_scraping_pipeline.py` | parsers offline, registry, pipeline (fallback/fail-safe) | 22 |
 
 ---

@@ -1,50 +1,79 @@
-# Dependências do Projeto
+# 🔧 Dependências do Projeto
 
-Esta pasta contém as dependências necessárias para o funcionamento do SoundScraper.
+Esta pasta concentra as dependências do **SoundScraper**: a lista de pacotes Python e
+o espaço para o FFmpeg embutido (opcional). As dependências Python são instaladas
+automaticamente pelo `start_app.py` / `run_cli.py`, então normalmente você não precisa
+mexer aqui.
+
+---
 
 ## 📦 Conteúdo
 
-### ✅ Incluído no Repositório:
-- **ffmpeg/** - Codec de áudio (já incluído)
-- **requirements.txt** - Lista de pacotes Python necessários
+| Item | O que é | Versionado no repo? |
+|---|---|---|
+| `requirements.txt` | Pacotes Python de **runtime** (CLI + Web app) | ✅ Sim |
+| `requirements-dev.txt` | Runtime **+** testes (`pytest`) e build (`pyinstaller`) | ✅ Sim |
+| `ffmpeg/` | Apenas o `LICENSE` do FFmpeg (exigido para redistribuir o binário) | ⚠️ Parcial — **o binário não** |
 
-### ⬇️ Precisa Baixar Separadamente:
+> ⚠️ **O binário do FFmpeg não é versionado.** A pasta `ffmpeg/` guarda só a licença e a
+> documentação. O SoundScraper resolve o FFmpeg em tempo de execução (ver abaixo).
 
-#### **Navegador/chrome-win64/** - Google Chrome Portátil
-O Chrome portátil não está incluído no repositório devido ao tamanho (>100MB).
+---
 
-**Opção 1 - Instalar Chrome no Sistema (Recomendado):**
-- Baixe e instale: https://www.google.com/chrome/
-- O script detectará automaticamente
+## 🎬 FFmpeg (necessário para o download)
 
-**Opção 2 - Usar Chrome Portátil:**
-1. Baixe o Chrome for Testing (versão 114.0.5708.0): 
-   - **Link direto:** https://storage.googleapis.com/chrome-for-testing-public/114.0.5708.0/win64/chrome-win64.zip
-2. Extraia o conteúdo do arquivo ZIP para: `Dependencias/Navegador/`
-3. Certifique-se de que existe: `Dependencias/Navegador/chrome-win64/chrome.exe`
+O SoundScraper procura o FFmpeg nesta ordem (ver `core/platform_utils.py → find_ffmpeg()`):
 
-**Estrutura esperada:**
+1. **Bundle do executável** — quando rodando como `.exe` empacotado (Windows).
+2. **Embutido no projeto** — `deps/ffmpeg/ffmpeg-8.0-essentials_build/bin/ffmpeg(.exe)`,
+   se você colocar o binário ali manualmente.
+3. **FFmpeg do sistema no PATH** — caminho recomendado em Linux/macOS.
+
+Instalação do FFmpeg do sistema:
+
+```bash
+# Linux (Debian/Ubuntu)
+sudo apt install ffmpeg
+
+# macOS (Homebrew)
+brew install ffmpeg
+
+# Windows
+winget install Gyan.FFmpeg
 ```
-Dependencias/
-├── Navegador/
-│   └── chrome-win64/
-│       ├── chrome.exe  ← arquivo principal
-│       ├── chrome.dll
-│       └── ... (outros arquivos)
-├── ffmpeg/
-│   └── ffmpeg-8.0-essentials_build/
-└── requirements.txt
+
+> O `start_app.py` e o CLI tentam instalar o FFmpeg automaticamente quando ele falta,
+> detectando o gerenciador de pacotes do seu sistema.
+
+---
+
+## 🌐 Google Chrome / Chromium (opcional)
+
+O navegador é usado **apenas** pelo fallback de coleta via Selenium. A coleta padrão usa a
+**API v2 do SoundCloud via HTTP e não precisa de navegador**, então o Chrome é opcional.
+
+- **Recomendado:** instale o Chrome/Chromium pelo seu sistema — o SoundScraper o detecta
+  automaticamente (ver `core/browser_handler.py`).
+- Se um navegador portátil for usado, ele fica fora do repositório (a pasta
+  `deps/Navegador/` é ignorada pelo Git por causa do tamanho).
+
+---
+
+## 🚀 Instalação rápida
+
+As dependências Python são instaladas automaticamente, mas você pode fazê-lo à mão:
+
+```bash
+# Runtime (CLI + Web app)
+pip install -r deps/requirements.txt
+
+# Desenvolvimento (runtime + testes + build)
+pip install -r deps/requirements-dev.txt
 ```
 
-## 🚀 Instalação Rápida
+Para rodar o projeto, veja o [README principal](../README.md):
 
-1. Clone o repositório
-2. Instale o Chrome (sistema ou portátil)
-3. Execute: `cd Arquivos && python soundcloud_tracks_downloader.py`
-4. O script verificará e instalará as dependências Python automaticamente
-
-## ℹ️ Notas
-
-- O ffmpeg já está incluído, não precisa baixar
-- As dependências Python são instaladas automaticamente pelo script
-- O Chrome é necessário para o Selenium funcionar
+```bash
+python start_app.py   # interface web (instala + builda + sobe + abre o navegador)
+python run_cli.py     # modo CLI (coleta + download no terminal)
+```
