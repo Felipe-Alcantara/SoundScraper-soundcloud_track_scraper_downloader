@@ -40,7 +40,7 @@ def main() -> int:
         print("➡️  Para baixar essas faixas: python run_cli.py")
         return 0
 
-    print(f"Comando desconhecido: {command!r}. Use: (sem argumento) | scrape")
+    print(f"Comando desconhecido: {command!r}. Use: (sem argumento) | download | scrape")
     return 2
 
 
