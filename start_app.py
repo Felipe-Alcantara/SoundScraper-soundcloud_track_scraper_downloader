@@ -38,12 +38,21 @@ PORT = 8000          # backend (FastAPI/uvicorn)
 DEV_PORT = 5173      # frontend (Vite dev server)
 
 REQUIREMENTS = ROOT / "deps" / "requirements.txt"
+VENV_DIR = ROOT / ".venv"
 FRONTEND_DIR = ROOT / "frontend"
 FRONTEND_DIST = FRONTEND_DIR / "dist"
 PACKAGE_JSON = FRONTEND_DIR / "package.json"
 
 NPM = "npm.cmd" if os.name == "nt" else "npm"
 # ---------------------------------------------------------------------------
+
+
+def python_executable() -> str:
+    """Return the project interpreter when its virtual environment exists."""
+    executable = VENV_DIR / ("Scripts" if os.name == "nt" else "bin") / (
+        "python.exe" if os.name == "nt" else "python"
+    )
+    return str(executable) if executable.exists() else sys.executable
 
 
 def log(msg: str) -> None:
@@ -96,9 +105,21 @@ def install_python_deps() -> None:
     if not REQUIREMENTS.exists():
         log(f"requirements.txt não encontrado em {REQUIREMENTS} — pulando deps Python.")
         return
-    log("Instalando dependências Python (pip install -r deps/requirements.txt)...")
+
+    interpreter = python_executable()
+    if interpreter == sys.executable:
+        log(f"Criando ambiente virtual Python em {VENV_DIR}...")
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(VENV_DIR)],
+            cwd=str(ROOT),
+            check=True,
+        )
+        interpreter = python_executable()
+
+    log("Instalando dependências Python no ambiente virtual (deps/requirements.txt)...")
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-r", str(REQUIREMENTS)],
+        [interpreter, "-m", "pip", "install", "-r", str(REQUIREMENTS)],
+        cwd=str(ROOT),
         check=True,
     )
 
@@ -164,7 +185,7 @@ def run_production(open_browser: bool) -> int:
 
     log(f"Iniciando o SoundScraper em {url} ... (Ctrl+C para parar)")
     cmd = [
-        sys.executable, "-m", "uvicorn", "backend.main:app",
+        python_executable(), "-m", "uvicorn", "backend.main:app",
         "--host", HOST, "--port", str(PORT),
     ]
     try:
@@ -181,7 +202,7 @@ def run_production(open_browser: bool) -> int:
 def run_dev(open_browser: bool) -> int:
     """Sobe backend com reload (:8000) + Vite dev server (:5173)."""
     backend_cmd = [
-        sys.executable, "-m", "uvicorn", "backend.main:app",
+        python_executable(), "-m", "uvicorn", "backend.main:app",
         "--host", HOST, "--port", str(PORT), "--reload",
     ]
     log(f"[dev] Subindo backend (reload) em http://{HOST}:{PORT} ...")

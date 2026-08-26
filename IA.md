@@ -91,6 +91,9 @@ websockets. FIX: adicionados ao requirements; criado `requirements-dev.txt`.
 [2026-08-26] BUG: smoke test do EXE Windows falhava antes do banner com `UnicodeEncodeError` em `crash_logger`.
 CAUSA: o PyInstaller iniciava stdout/stderr em cp1252, ignorando a configuração UTF-8 do processo pai. FIX:
 `crash_logger.inicializar_logger()` reconfigura os streams para UTF-8 com substituição segura de caracteres.
+[2026-08-26] BUG: `start_app.py` falhava em distribuições Linux com PEP 668 (`externally-managed-environment`).
+FIX: o script cria/reutiliza `.venv/`, instala `deps/requirements.txt` nele e usa seu Python para iniciar o
+Uvicorn; `--no-install` continua usando o ambiente virtual existente ou o interpretador atual.
 
 ---
 

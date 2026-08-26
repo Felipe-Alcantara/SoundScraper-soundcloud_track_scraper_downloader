@@ -48,6 +48,10 @@ cd SoundScraper-soundcloud_track_scraper_downloader
 python start_app.py
 ```
 
+Na primeira execução, o script cria o ambiente virtual `.venv/` e instala as
+dependências Python nele. Isso evita conflitos com instalações Linux protegidas
+pelo PEP 668; as dependências não são instaladas no Python do sistema.
+
 Pré-requisitos: **Python 3.10+**. Para a interface web também é preciso **Node.js** (para buildar o frontend);
 sem Node, a API REST/WebSocket continua disponível. **FFmpeg** é necessário para o download (ver
 [Requisitos](#-requisitos)).
@@ -77,7 +81,7 @@ formato (FLAC/MP3) → acompanhe coleta e download em tempo real.
 Para quem prefere o terminal ou quer automatizar — **um único comando**, de qualquer pasta do projeto:
 
 ```bash
-pip install -r deps/requirements.txt   # (uma vez) — ou deixe o próprio script instalar
+pip install -r deps/requirements.txt   # alternativa manual (preferencialmente em um venv)
 python run_cli.py                      # fluxo completo: coleta + download (com loop "baixar mais?")
 python run_cli.py scrape               # só coleta os links (gera o .txt) e encerra
 ```
