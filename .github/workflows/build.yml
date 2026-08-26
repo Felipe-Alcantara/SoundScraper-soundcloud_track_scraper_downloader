@@ -79,10 +79,21 @@ jobs:
           $tamanho = (Get-Item $exe).Length
           Write-Host "Tamanho: $tamanho bytes"
           if ($tamanho -lt 10MB) { Write-Error "ERRO: binario menor que 10 MB (build incompleto)"; exit 1 }
-          # Executa com stdin vazio e timeout; verifica o banner
-          $saida = "" | & cmd /c "echo. | timeout /t 10 $exe 2>&1" 2>&1
+          # Inicia o processo redirecionando stdout para arquivo e mata depois de 5s.
+          # Necessario porque o app e interativo; timeout /t nao aceita pipe no Windows.
+          $p = Start-Process -FilePath $exe `
+               -RedirectStandardInput  "NUL" `
+               -RedirectStandardOutput "smoke_out.txt" `
+               -RedirectStandardError  "smoke_err.txt" `
+               -PassThru -NoNewWindow
+          Start-Sleep 5
+          if (-not $p.HasExited) { $p.Kill() }
+          $saida = (Get-Content "smoke_out.txt" -Raw -ErrorAction SilentlyContinue) + `
+                   (Get-Content "smoke_err.txt" -Raw -ErrorAction SilentlyContinue)
+          Write-Host "--- saida do binario ---"
+          Write-Host $saida
           if ($saida -notmatch "SOUNDSCRAPER") {
-            Write-Error "ERRO: banner nao encontrado — imports podem ter falhado`n$saida"
+            Write-Error "ERRO: banner nao encontrado — imports podem ter falhado"
             exit 1
           }
           Write-Host "Smoke test OK"
