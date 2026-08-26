@@ -81,8 +81,10 @@ jobs:
           if ($tamanho -lt 10MB) { Write-Error "ERRO: binario menor que 10 MB (build incompleto)"; exit 1 }
           # Inicia o processo redirecionando stdout para arquivo e mata depois de 5s.
           # Necessario porque o app e interativo; timeout /t nao aceita pipe no Windows.
+          # -RedirectStandardInput precisa de arquivo real (nao device NUL) no PowerShell 7.
+          $stdin = New-TemporaryFile
           $p = Start-Process -FilePath $exe `
-               -RedirectStandardInput  "NUL" `
+               -RedirectStandardInput  $stdin.FullName `
                -RedirectStandardOutput "smoke_out.txt" `
                -RedirectStandardError  "smoke_err.txt" `
                -PassThru -NoNewWindow
