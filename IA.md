@@ -88,6 +88,9 @@ versionado. FIX: teste reescrito para validar comportamento real de `find_ffmpeg
 
 [2026-06-11] BUG: web app não subia a partir de `deps/requirements.txt`. CAUSA: faltavam fastapi/uvicorn/
 websockets. FIX: adicionados ao requirements; criado `requirements-dev.txt`.
+[2026-08-26] BUG: smoke test do EXE Windows falhava antes do banner com `UnicodeEncodeError` em `crash_logger`.
+CAUSA: o PyInstaller iniciava stdout/stderr em cp1252, ignorando a configuração UTF-8 do processo pai. FIX:
+`crash_logger.inicializar_logger()` reconfigura os streams para UTF-8 com substituição segura de caracteres.
 
 ---
 

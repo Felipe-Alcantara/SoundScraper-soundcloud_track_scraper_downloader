@@ -21,6 +21,23 @@ from datetime import datetime
 
 SOUNDSCRAPER_VERSION = "1.0"
 
+
+def _configure_console_encoding() -> None:
+    """Make console output safe on frozen Windows executables.
+
+    PyInstaller can start with a cp1252 stream even when ``PYTHONUTF8`` is set
+    by the parent process.  The CLI intentionally prints box-drawing and emoji
+    characters, so configure both streams before the first diagnostic print.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                # Some redirected or closed streams cannot be reconfigured.
+                pass
+
 def _get_logs_folder():
     """
     Retorna o caminho da pasta de logs.
@@ -334,6 +351,7 @@ def inicializar_logger():
 
     Retorna o caminho do arquivo de log da sessão.
     """
+    _configure_console_encoding()
     print("")
     print("─" * 70)
     print("📝  SISTEMA DE LOG")

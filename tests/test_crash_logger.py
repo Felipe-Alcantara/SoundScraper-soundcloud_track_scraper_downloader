@@ -59,6 +59,19 @@ class TestGetLogsFolder:
             assert os.path.isdir(result)
 
 
+class TestConsoleEncoding:
+    """Console output must not crash when the host uses a narrow code page."""
+
+    def test_reconfigures_supported_streams(self):
+        stdout = MagicMock()
+        stderr = MagicMock()
+        with patch.object(cl.sys, 'stdout', stdout), patch.object(cl.sys, 'stderr', stderr):
+            cl._configure_console_encoding()
+
+        stdout.reconfigure.assert_called_once_with(encoding='utf-8', errors='replace')
+        stderr.reconfigure.assert_called_once_with(encoding='utf-8', errors='replace')
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  SEÇÃO 2: Informações do sistema
 # ══════════════════════════════════════════════════════════════════════
