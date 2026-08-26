@@ -1,0 +1,93 @@
+name: Build — CLI Linux e Windows
+
+# Dispara em todo push para main e permite execução manual.
+# Cada job gera um executável standalone no próprio SO (PyInstaller não faz cross-compile).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            sufixo: linux-x86_64
+            exe: dist/soundcloud-downloader
+          - os: windows-latest
+            sufixo: windows-x86_64
+            exe: dist/soundcloud-downloader.exe
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.sufixo }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: deps/requirements-dev.txt
+
+      - name: Instalar FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Instalar FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg --no-progress -y
+
+      - name: Instalar dependências Python
+        run: pip install -r deps/requirements-dev.txt
+
+      - name: Rodar testes
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Build do executável
+        run: python tools/build_ci.py
+
+      - name: Smoke test — verificar binário (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          exe="dist/soundcloud-downloader"
+          [ -f "$exe" ] || { echo "ERRO: executável não encontrado"; exit 1; }
+          tamanho=$(stat -c%s "$exe")
+          echo "Tamanho: $tamanho bytes"
+          [ "$tamanho" -gt 10485760 ] || { echo "ERRO: binário menor que 10 MB (build incompleto)"; exit 1; }
+          chmod +x "$exe"
+          # Verifica que o processo carrega (banner impresso antes de qualquer interação)
+          saida=$(echo "" | timeout 10 "$exe" 2>&1 || true)
+          echo "$saida" | grep -qi "SOUNDSCRAPER" \
+            || { echo "ERRO: banner não encontrado na saída — imports podem ter falhado"; echo "$saida"; exit 1; }
+          echo "Smoke test OK"
+
+      - name: Smoke test — verificar binário (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe = "dist\soundcloud-downloader.exe"
+          if (-not (Test-Path $exe)) { Write-Error "ERRO: executavel nao encontrado"; exit 1 }
+          $tamanho = (Get-Item $exe).Length
+          Write-Host "Tamanho: $tamanho bytes"
+          if ($tamanho -lt 10MB) { Write-Error "ERRO: binario menor que 10 MB (build incompleto)"; exit 1 }
+          # Executa com stdin vazio e timeout; verifica o banner
+          $saida = "" | & cmd /c "echo. | timeout /t 10 $exe 2>&1" 2>&1
+          if ($saida -notmatch "SOUNDSCRAPER") {
+            Write-Error "ERRO: banner nao encontrado — imports podem ter falhado`n$saida"
+            exit 1
+          }
+          Write-Host "Smoke test OK"
+
+      - name: Upload do artefato
+        uses: actions/upload-artifact@v4
+        with:
+          # Nome rastreável: SO, arquitetura e SHA curto do commit
+          name: soundcloud-downloader-${{ matrix.sufixo }}-${{ github.sha }}
+          path: ${{ matrix.exe }}
+          if-no-files-found: error
+          retention-days: 30

@@ -106,6 +106,11 @@ do build do Windows).
 sistema (`apt install ffmpeg` / `brew install ffmpeg`).
 [2026-06-11] O empacotamento via PyInstaller (`tools/build_exe.py`/`.spec`) gera **EXE de Windows**; build para
 Linux/macOS é um trabalho futuro.
+[2026-08-26] CI de build adicionado: `.github/workflows/build.yml` dispara em todo push para `main` (e manual)
+com matriz ubuntu-latest/windows-latest. Cada job instala FFmpeg via apt/choco, roda `pytest`, executa
+`tools/build_ci.py` (script cross-platform novo, usa `os.pathsep` para separadores do PyInstaller) e sobe o
+artefato nomeado `soundcloud-downloader-{sufixo}-{sha}`. Smoke test verifica tamanho >10 MB e banner na saída.
+`tools/build_exe.py` permanece para build local Windows; `build_ci.py` é exclusivo do CI.
 [2026-06-11] CLI tem entry point único na raiz: `run_cli.py` (coleta + download), que resolve o sys.path para
 core/ — não precisa `cd core`. Subcomandos: `scrape`, `download`.
 
