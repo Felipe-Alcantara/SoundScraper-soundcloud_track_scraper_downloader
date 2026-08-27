@@ -117,6 +117,12 @@ com matriz ubuntu-latest/windows-latest. Cada job instala FFmpeg via apt/choco, 
 `tools/build_ci.py` (script cross-platform novo, usa `os.pathsep` para separadores do PyInstaller) e sobe o
 artefato nomeado `soundcloud-downloader-{sufixo}-{sha}`. Smoke test verifica tamanho >10 MB e banner na saída.
 `tools/build_exe.py` permanece para build local Windows; `build_ci.py` é exclusivo do CI.
+[2026-08-27] GitHub Release automática adicionada ao mesmo workflow: tag `vX.Y.Z` publica Release com os
+dois binários (renomeados sem o SHA, ex. `soundcloud-downloader-linux-x86_64`). Push para `main` continua só
+validando; nada é publicado sem tag. `.github/scripts/retry.sh` (backoff no HTTP 5xx transitório do
+`gh release create`) e `.github/scripts/release-version.sh` (`is_tag_newer`, `sort -V`) foram trazidos do
+Felixo AI Core, que resolveu o mesmo par de defeitos em 26/08/2026 — reaproveitados como estavam, sem reescrever.
+`.gitattributes` novo trava `*.sh` em LF (os scripts rodam no runner Linux do job `release`).
 [2026-06-11] CLI tem entry point único na raiz: `run_cli.py` (coleta + download), que resolve o sys.path para
 core/ — não precisa `cd core`. Subcomandos: `scrape`, `download`.
 
@@ -133,6 +139,16 @@ build do EXE. ALTERNATIVAS: (a) reescrever browser_handler e migrar tudo para os
 `scraping/` novo e fazer browser_handler delegar o parsing. DECISÃO: (b) — parsing centralizado em
 `scraping.parsers`, funções públicas de browser_handler preservadas. VALIDAÇÃO: 162 testes verdes; backend e CLI
 importam; `start_app.py` sobe e responde `/api/info` no Linux.
+
+[2026-08-27] CONTEXTO: CI já builda os dois binários em todo push (26/08), mas sem Release ninguém externo tinha
+onde baixar — só CI Artifacts, 30 dias. ALTERNATIVAS: (a) tag-driven — Release só nasce numa tag `vX.Y.Z`; (b)
+rolling/nightly — toda build do `main` sobrescreve uma Release `latest`, sem versionamento semântico. DECISÃO:
+(a) — o repositório já tem 5 tags manuais marcando versões estáveis (`v1.0` a `2.5`); o público é quem baixa
+para usar, não quem acompanha a ponta do `main`; rolling trocaria um hábito já estabelecido por builds sem
+versão. VALIDAÇÃO: tag `v2.5.1` publicada de ponta a ponta contra o CI real (não simulação) — Release criada com
+os dois binários anexados, marcada "Latest" corretamente sobre a `2.5` anterior (`is_tag_newer` decidiu certo:
+`2.5.1 > 2.5`), changelog automático gerado. Baixado o binário Linux da Release publicada (146 MB) para conferir
+que é um artefato real, não só um passo verde no Actions.
 
 [2026-06-11] CONTEXTO: ordem dos métodos de coleta. DECISÃO: HTTP API v2 primeiro (mais fácil/robusto, sem
 navegador), Selenium como fallback; pipeline para de tentar no primeiro método com resultado. VALIDAÇÃO: testes
