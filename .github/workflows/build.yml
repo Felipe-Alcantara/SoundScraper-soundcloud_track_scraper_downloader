@@ -1,10 +1,13 @@
 name: Build — CLI Linux e Windows
 
-# Dispara em todo push para main e permite execução manual.
+# Dispara em todo push para main (valida o build, sem publicar nada) e em
+# toda tag vX.Y.Z (mesmo build, mais o job `release` publicando os dois
+# binários). Permite execução manual também.
 # Cada job gera um executável standalone no próprio SO (PyInstaller não faz cross-compile).
 on:
   push:
     branches: [main]
+    tags: ["v*.*.*"]
   workflow_dispatch:
 
 jobs:
@@ -108,3 +111,70 @@ jobs:
           path: ${{ matrix.exe }}
           if-no-files-found: error
           retention-days: 30
+
+  # Só roda quando o push é de uma tag vX.Y.Z — push para main fica só na
+  # validação do job `build` acima, sem publicar Release nenhuma.
+  release:
+    name: Publicar GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Baixar os dois binários do job de build
+        uses: actions/download-artifact@v4
+        with:
+          pattern: soundcloud-downloader-*-${{ github.sha }}
+          path: artefatos
+          merge-multiple: false
+
+      # download-artifact preserva o nome do artefato como subpasta; o SHA no
+      # nome ajudava a rastrear no job de build, mas quem baixa da Release não
+      # quer ver um hash no arquivo — só o SO.
+      - name: Renomear para o nome final do binário
+        run: |
+          set -eu
+          mkdir -p release-assets
+          mv "artefatos/soundcloud-downloader-linux-x86_64-${{ github.sha }}/soundcloud-downloader" \
+             "release-assets/soundcloud-downloader-linux-x86_64"
+          mv "artefatos/soundcloud-downloader-windows-x86_64-${{ github.sha }}/soundcloud-downloader.exe" \
+             "release-assets/soundcloud-downloader-windows-x86_64.exe"
+          chmod +x release-assets/soundcloud-downloader-linux-x86_64
+          ls -la release-assets/
+
+      - name: Decidir se esta tag deve virar "Latest"
+        id: decidir_latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          source .github/scripts/release-version.sh
+
+          tag="${{ github.ref_name }}"
+          atual="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
+          echo "Tag candidata: $tag — Latest atual: ${atual:-<nenhuma>}"
+
+          if is_tag_newer "$tag" "$atual"; then
+            echo "flag=--latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=--latest=false" >> "$GITHUB_OUTPUT"
+            echo "$tag não é mais nova que $atual — publicada sem marcar como Latest."
+          fi
+
+      - name: Criar a Release, com retentativa em falha transitória da API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          source .github/scripts/retry.sh
+          retry 5 5 -- gh release create "${{ github.ref_name }}" \
+            release-assets/soundcloud-downloader-linux-x86_64 \
+            release-assets/soundcloud-downloader-windows-x86_64.exe \
+            --title "SoundScraper ${{ github.ref_name }}" \
+            --generate-notes \
+            ${{ steps.decidir_latest.outputs.flag }}

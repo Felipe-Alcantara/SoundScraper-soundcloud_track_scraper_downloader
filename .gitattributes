@@ -1,0 +1,5 @@
+# Scripts do workflow de Release rodam em runner Linux; um contribuidor no
+# Windows sem esta trava poderia commitar CRLF sem perceber (o autocrlf local
+# não protege isso sozinho — só normaliza o próprio checkout), e o shebang
+# `#!/usr/bin/env bash\r` falha silenciosamente no CI.
+*.sh text eol=lf

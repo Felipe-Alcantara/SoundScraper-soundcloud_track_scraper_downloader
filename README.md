@@ -37,6 +37,24 @@ feito pelo **yt-dlp** com **FFmpeg**.
 
 ---
 
+## 📦 Baixar o executável (CLI, sem instalar nada)
+
+Toda tag `vX.Y.Z` publica uma [GitHub Release](https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader/releases/latest) com o **CLI** pronto
+para Linux e Windows — sem precisar clonar o repositório nem instalar Python:
+
+- **Linux**: [`soundcloud-downloader-linux-x86_64`](https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader/releases/latest) — dê `chmod +x` e rode.
+- **Windows**: [`soundcloud-downloader-windows-x86_64.exe`](https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader/releases/latest) — baixe e rode.
+
+A Release **Latest** sempre aponta para a versão publicada mais recente. **FFmpeg** ainda é
+necessário no sistema para o download (ver [Requisitos](#-requisitos)); o executável cobre só
+o modo CLI — a interface Web continua rodando a partir do código-fonte, com `python start_app.py`
+(veja [Início rápido](#-início-rápido) abaixo).
+
+> Toda build do `main` já roda testes e um smoke test em CI, mas só vira Release quando alguém
+> empurra uma tag — ver [Como publicar uma Release](#como-publicar-uma-release) mais abaixo.
+
+---
+
 ## 🚀 Início rápido
 
 A forma mais simples — **um único comando** instala dependências, builda o frontend, sobe o servidor e abre o
@@ -198,6 +216,33 @@ python tools/build_exe.py
 Valida pré-requisitos (PyInstaller, módulos, FFmpeg, Selenium Manager, ícone), limpa builds anteriores, gera o
 `.exe` em `dist/` com todas as dependências embutidas e abre a pasta ao concluir. O build empacota o núcleo
 (`core/`), o pacote `scraping/` e o FFmpeg do Windows.
+
+Em CI (`.github/workflows/build.yml`), o mesmo executável é gerado para **Linux e Windows** —
+`tools/build_ci.py`, reprodutível em runner limpo, sem paths absolutos locais.
+
+### Como publicar uma Release
+
+Todo push para `main` só **valida** o build (testes + smoke test), sem publicar nada — os
+binários ficam em CI Artifacts por 30 dias, para depuração. Uma **GitHub Release** nasce só
+quando alguém empurra uma tag `vX.Y.Z`:
+
+```bash
+git tag v2.6.0
+git push origin v2.6.0
+```
+
+Isso dispara de novo o build (Linux + Windows) e, se ele passar, publica a Release com os dois
+binários anexados, notas geradas a partir dos commits desde a tag anterior (`--generate-notes`),
+e marcada como **Latest** — a não ser que uma Release mais nova já exista (comparação por
+`sort -V` em `.github/scripts/release-version.sh`, para uma tag antiga nunca sobrescrever a mais
+recente como Latest só por ter terminado de publicar depois — problema já visto e corrigido no
+Felixo AI Core, ver commit de referência no workflow). Falhas transitórias da API do GitHub
+(HTTP 5xx) são reexecutadas sozinhas até 5 vezes, com espera crescente
+(`.github/scripts/retry.sh`).
+
+**Convenção de tag**: `vMAJOR.MINOR.PATCH` (ex.: `v2.6.0`). Releases anteriores a esta política
+(`v1.0` até `2.5`) foram criadas manualmente e não seguem o prefixo `v` de forma consistente —
+não precisam ser corrigidas, mas toda tag nova segue o padrão acima.
 
 ---
 
