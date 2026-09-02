@@ -43,5 +43,8 @@ frontend/dist/
 # ══════════════════════════════════════════════════════════════
 #  Outros
 # ══════════════════════════════════════════════════════════════
+.env
+.env.*
+!.env.example
 /SoundCloud_Downloads
 /Padrão de qualidade - Felixo System Design
