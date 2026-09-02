@@ -114,7 +114,11 @@ function App() {
         {step === 'scraping' && (
           <Card className="felixo-card-glow">
             <CardContent className="py-12 flex flex-col items-center text-center gap-4">
-              <div className="w-12 h-12 rounded-full border-2 border-felixo-purple/35 border-t-felixo-purple animate-spin" />
+              <div
+                className="w-12 h-12 rounded-full border-2 border-felixo-purple/35 border-t-felixo-purple animate-spin"
+                role="status"
+                aria-label="Coleta em andamento"
+              />
               <p className="text-zinc-200 text-lg text-glow">Coletando faixas do SoundCloud...</p>
               {scraper.progress.total > 0 && (
                 <p className="text-sm text-zinc-400 font-mono">
@@ -126,7 +130,7 @@ function App() {
         )}
 
         {step === 'error' && (
-          <Card className="border-red-500/35 bg-red-950/20">
+          <Card className="border-red-500/35 bg-red-950/20" role="alert">
             <CardContent className="py-12 flex flex-col items-center text-center gap-4">
               <p className="text-red-300 text-xl">Erro durante a coleta</p>
               <Button onClick={handleNewScrape} variant="secondary">
@@ -179,4 +183,3 @@ function App() {
 }
 
 export default App
-

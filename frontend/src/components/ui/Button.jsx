@@ -27,6 +27,7 @@ function Button({
       className={cx(
         'group relative inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-medium',
         'transition-all duration-300 shadow-sm border disabled:opacity-45 disabled:cursor-not-allowed',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-felixo-purple focus-visible:outline-offset-2',
         variantClasses[variant],
         sizeClasses[size],
         className,
@@ -41,4 +42,3 @@ function Button({
 }
 
 export default Button
-

@@ -52,6 +52,11 @@ body {
   box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.65), 0 0 22px rgba(168, 85, 247, 0.2);
 }
 
+.input-glowing-border:focus-visible {
+  outline: 2px solid var(--felixo-purple);
+  outline-offset: 2px;
+}
+
 .text-glow {
   animation: text-glow-breathe 3.8s ease-in-out infinite;
 }
@@ -83,6 +88,17 @@ body {
   }
   50% {
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

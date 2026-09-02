@@ -19,7 +19,7 @@ function LogConsole({ logs }) {
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="max-h-56 overflow-y-auto font-mono text-xs">
+        <div className="max-h-56 overflow-y-auto font-mono text-xs" aria-live="polite">
           {logs.map((log, index) => (
             <div key={`${log.time}-${index}`} className="px-5 py-2 border-b border-white/5 flex gap-3">
               <span className="text-zinc-500 shrink-0">[{log.time}]</span>
@@ -34,4 +34,3 @@ function LogConsole({ logs }) {
 }
 
 export default LogConsole
-

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -17,6 +19,8 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.4.0",
     "autoprefixer": "^10.4.20",
+    "eslint": "9.39.5",
+    "eslint-plugin-react": "7.37.5",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.0"

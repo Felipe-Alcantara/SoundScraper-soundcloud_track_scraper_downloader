@@ -32,6 +32,11 @@ function DownloadProgress({ progress, currentTrack }) {
             <div
               className="h-full rounded-full bg-gradient-to-r from-felixo-purple to-felixo-purple-bright transition-all duration-500 ease-out"
               style={{ width: `${percent}%` }}
+              role="progressbar"
+              aria-label="Progresso do download"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={percent}
             />
           </div>
         </div>

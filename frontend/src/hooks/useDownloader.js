@@ -32,7 +32,7 @@ export function useDownloader() {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
         }
-      } catch (error) {
+      } catch {
         setStatus('error')
         addLog(`❌ Backend indisponível em ${API_ORIGIN}`)
         addLog('⚠️ Inicie o backend antes de baixar faixas')

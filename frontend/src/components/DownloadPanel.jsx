@@ -14,16 +14,21 @@ const FORMATS = [
 function DownloadPanel({ tracks, onDownloadStart }) {
   const [format, setFormat] = useState('flac')
   const [folder, setFolder] = useState('')
+  const [folderError, setFolderError] = useState('')
 
   const handleSelectFolder = async () => {
+    setFolderError('')
     try {
       const response = await fetch(buildApiUrl('/api/select-folder'), { method: 'POST' })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
       if (data.success) {
         setFolder(data.path)
+      } else {
+        setFolderError(data.message || 'Nenhuma pasta foi selecionada.')
       }
-    } catch (error) {
-      console.error('Erro ao selecionar pasta:', error)
+    } catch {
+      setFolderError('Não foi possível abrir o seletor de pastas. Tente novamente.')
     }
   }
 
@@ -49,14 +54,15 @@ function DownloadPanel({ tracks, onDownloadStart }) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm text-zinc-300">Formato de áudio</label>
+        <fieldset className="space-y-2">
+          <legend className="block text-sm text-zinc-300">Formato de áudio</legend>
           <div className="grid sm:grid-cols-2 gap-3">
             {FORMATS.map((item) => (
               <button
                 key={item.value}
                 type="button"
                 onClick={() => setFormat(item.value)}
+                aria-pressed={format === item.value}
                 className={cx(
                   'rounded-2xl border p-4 text-left transition-all duration-300',
                   'hover:-translate-y-0.5 hover:border-white/30',
@@ -65,18 +71,21 @@ function DownloadPanel({ tracks, onDownloadStart }) {
                     : 'border-white/10 bg-zinc-900/60',
                 )}
               >
-                <span className="block text-xl">{item.icon}</span>
+                <span className="block text-xl" aria-hidden="true">{item.icon}</span>
                 <span className="mt-2 block font-semibold">{item.label}</span>
                 <span className="text-xs text-zinc-400">{item.subtitle}</span>
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         <div className="space-y-2">
-          <label className="block text-sm text-zinc-300">Pasta de destino</label>
+          <label htmlFor="download-folder" className="block text-sm text-zinc-300">
+            Pasta de destino
+          </label>
           <div className="flex flex-col sm:flex-row gap-3">
             <Input
+              id="download-folder"
               value={folder}
               readOnly
               placeholder="Nenhuma pasta selecionada"
@@ -86,6 +95,7 @@ function DownloadPanel({ tracks, onDownloadStart }) {
               Escolher Pasta
             </Button>
           </div>
+          {folderError && <p className="text-xs text-red-300" role="alert">{folderError}</p>}
         </div>
 
         <Button

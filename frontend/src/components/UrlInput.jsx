@@ -4,6 +4,7 @@ import Input from './ui/Input'
 import Badge from './ui/Badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/Card'
 import { cx } from '../utils/cx'
+import { isValidSoundCloudInput } from '../utils/validation'
 
 const OPTIONS = [
   { value: '1', label: 'Todas', icon: '📀' },
@@ -20,9 +21,7 @@ function UrlInput({ onScrapeStart }) {
   const [choice, setChoice] = useState('3')
 
   const trimmedUrl = url.trim()
-  const isValidUrl = !trimmedUrl
-    ? false
-    : trimmedUrl.includes('soundcloud.com/') || /^[a-zA-Z0-9_-]+$/.test(trimmedUrl)
+  const isValidUrl = isValidSoundCloudInput(trimmedUrl)
 
   const handleSubmit = (event) => {
     event.preventDefault()
@@ -47,27 +46,35 @@ function UrlInput({ onScrapeStart }) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="block text-sm text-zinc-300">Link do SoundCloud</label>
+            <label htmlFor="soundcloud-url" className="block text-sm text-zinc-300">
+              Link do SoundCloud
+            </label>
             <Input
+              id="soundcloud-url"
               type="text"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="soundcloud.com/artista ou https://soundcloud.com/artista"
+              aria-invalid={Boolean(trimmedUrl) && !isValidUrl}
+              aria-describedby={trimmedUrl && !isValidUrl ? 'soundcloud-url-error' : undefined}
             />
             {trimmedUrl && !isValidUrl && (
-              <p className="text-xs text-red-300">Formato inválido. Use um link SoundCloud ou nome de perfil.</p>
+              <p id="soundcloud-url-error" className="text-xs text-red-300" role="alert">
+                Formato inválido. Use um link SoundCloud ou nome de perfil.
+              </p>
             )}
           </div>
 
-          <div className="space-y-3">
-            <label className="block text-sm text-zinc-300">O que deseja coletar?</label>
+          <fieldset className="space-y-3">
+            <legend className="block text-sm text-zinc-300">O que deseja coletar?</legend>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
               {OPTIONS.map((option) => (
                 <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setChoice(option.value)}
-                  className={cx(
+                key={option.value}
+                type="button"
+                onClick={() => setChoice(option.value)}
+                aria-pressed={choice === option.value}
+                className={cx(
                     'rounded-2xl border px-3 py-3 text-left transition-all duration-300',
                     'bg-zinc-900/70 hover:border-white/30 hover:-translate-y-0.5',
                     choice === option.value
@@ -75,14 +82,14 @@ function UrlInput({ onScrapeStart }) {
                       : 'border-white/10',
                   )}
                 >
-                  <span className="block text-lg">{option.icon}</span>
+                  <span className="block text-lg" aria-hidden="true">{option.icon}</span>
                   <span className={cx('mt-1 block text-sm font-medium', choice === option.value ? 'text-white' : 'text-zinc-300')}>
                     {option.label}
                   </span>
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <Button type="submit" shimmer className="w-full" disabled={!isValidUrl}>
             Iniciar Coleta
@@ -94,4 +101,3 @@ function UrlInput({ onScrapeStart }) {
 }
 
 export default UrlInput
-

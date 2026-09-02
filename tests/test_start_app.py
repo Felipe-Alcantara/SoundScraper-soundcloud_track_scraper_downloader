@@ -56,3 +56,40 @@ def test_install_python_deps_creates_venv_before_installing(tmp_path):
         "-r",
         str(requirements),
     ]
+
+
+def test_save_config_preserves_unknown_env_entries(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("SOUNDSCRAPER_TOKEN=keep-me\nSOUNDSCRAPER_PORT=9000\n", encoding="utf-8")
+
+    with patch.object(start_app, "ENV_FILE", env_file):
+        start_app.save_config(host="0.0.0.0", port=8100, dev_port=5174, open_browser=False)
+
+    content = env_file.read_text(encoding="utf-8")
+    assert "SOUNDSCRAPER_TOKEN=keep-me" in content
+    assert "SOUNDSCRAPER_PORT=8100" in content
+    assert "SOUNDSCRAPER_HOST=0.0.0.0" in content
+    assert "SOUNDSCRAPER_DEV_PORT=5174" in content
+    assert "SOUNDSCRAPER_OPEN_BROWSER=false" in content
+
+
+def test_interactive_menu_has_descriptive_exit_option(capsys):
+    with patch("builtins.input", return_value="0"):
+        assert start_app.interactive_menu() == 0
+
+    output = capsys.readouterr().out
+    assert "Iniciar" in output
+    assert "Instalar" in output
+    assert "Configurar" in output
+    assert "Status" in output
+    assert "Sair" in output
+
+
+def test_main_keeps_legacy_automation_flags():
+    with (
+        patch.object(start_app, "port_in_use", return_value=False),
+        patch.object(start_app, "run_production", return_value=0) as run_production,
+    ):
+        assert start_app.main(["--no-install", "--no-browser"]) == 0
+
+    run_production.assert_called_once_with(False)
