@@ -68,7 +68,7 @@ def main():
         print(f"  ✅ Entry point: {entry_point}")
     else:
         erros.append(f"Entry point não encontrado: {entry_point}")
-        print(f"  ❌ Entry point: NÃO ENCONTRADO")
+        print("  ❌ Entry point: NÃO ENCONTRADO")
 
     # Módulos
     for mod in modules:
@@ -92,7 +92,7 @@ def main():
         print(f"  ✅ Ícone: {icon_path}")
     else:
         icon_path = None
-        print(f"  ⚠️  Ícone não encontrado (será gerado sem ícone)")
+        print("  ⚠️  Ícone não encontrado (será gerado sem ícone)")
 
     # Selenium Manager
     selenium_manager_path = None
@@ -105,10 +105,10 @@ def main():
             print(f"  ✅ Selenium Manager: {sm_path}")
         else:
             erros.append(f"selenium-manager.exe não encontrado: {sm_path}")
-            print(f"  ❌ Selenium Manager: NÃO ENCONTRADO")
+            print("  ❌ Selenium Manager: NÃO ENCONTRADO")
     except ImportError:
         erros.append("Selenium não está instalado")
-        print(f"  ❌ Selenium: NÃO INSTALADO")
+        print("  ❌ Selenium: NÃO INSTALADO")
 
     # PyInstaller
     try:
@@ -116,7 +116,7 @@ def main():
         print(f"  ✅ PyInstaller: {PyInstaller.__version__}")
     except ImportError:
         erros.append("PyInstaller não está instalado (pip install pyinstaller)")
-        print(f"  ❌ PyInstaller: NÃO INSTALADO")
+        print("  ❌ PyInstaller: NÃO INSTALADO")
 
     print("")
 

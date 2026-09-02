@@ -60,7 +60,6 @@ def main() -> None:
     entry_point = core_dir / "soundcloud_tracks_downloader.py"
     dist_dir = project_root / "dist"
     build_dir = project_root / "build"
-    script_dir = Path(__file__).resolve().parent
 
     exe_nome = "soundcloud-downloader"
 
@@ -104,7 +103,6 @@ def main() -> None:
             print(f"  Removido: {pasta}")
 
     # ── Montar comando PyInstaller ───────────────────────────────────────────
-    ffmpeg_bin_dir = Path(ffmpeg_path).parent  # type: ignore[arg-type]
     scraping_pkg = core_dir / "scraping"
 
     cmd = [
@@ -114,7 +112,7 @@ def main() -> None:
         "--name", exe_nome,
         "--distpath", str(dist_dir),
         "--workpath", str(build_dir),
-        "--specpath", str(script_dir),
+        "--specpath", str(build_dir),
         "--paths", str(core_dir),
 
         # Binários externos
@@ -138,6 +136,12 @@ def main() -> None:
         "--hidden-import", "selenium.webdriver.common.selenium_manager",
         "--hidden-import", "yt_dlp",
         "--hidden-import", "mutagen",
+        "--hidden-import", "downloading",
+        "--hidden-import", "downloading.options",
+        "--hidden-import", "downloading.metadata",
+        "--hidden-import", "scraping.cli",
+        "--hidden-import", "scraping.legacy_http",
+        "--collect-submodules", "downloading",
         "--clean",
 
         str(entry_point),
