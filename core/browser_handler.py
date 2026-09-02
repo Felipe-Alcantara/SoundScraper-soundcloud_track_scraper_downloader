@@ -1,96 +1,76 @@
-"""
-browser_handler.py — Módulo responsável por toda a lógica de navegador e scraping HTTP.
+"""Compatibilidade para navegador e APIs antigas do SoundScraper.
 
-Gerencia:
-  • Localização do Chrome e ChromeDriver (portátil e sistema)
-  • Inicialização do WebDriver com múltiplas estratégias de fallback
-  • Correção de paths para funcionar dentro de EXEs (PyInstaller)
-  • Fallback completo via HTTP/API v2 do SoundCloud (sem navegador)
+O pipeline atual vive em ``core/scraping``. Este módulo mantém os nomes
+históricos usados pelo CLI, pelo executável PyInstaller e por integrações
+externas, mas separa a localização do navegador da implementação HTTP legada.
 """
+
+from __future__ import annotations
 
 import os
-import sys
-import re
-import json
-import time
 import shutil
+import sys
+import time
 
-# Parsing centralizado (fonte única de verdade, testável offline).
-from scraping import parsers
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  SEÇÃO 1: Localização de binários (Chrome / ChromeDriver)
-# ══════════════════════════════════════════════════════════════════════
-
-def _get_base_path():
-    """Retorna o diretório base dependendo se está rodando como EXE ou script."""
-    if getattr(sys, 'frozen', False):
-        return getattr(sys, '_MEIPASS', os.getcwd())
-    else:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.dirname(script_dir)
+from scraping import legacy_http
 
 
-def _find_chrome_binary():
-    """
-    Procura o binário do Chrome em múltiplos locais.
-    Retorna (caminho, origem) ou (None, None).
-    """
+def _get_base_path() -> str:
+    """Retorna a raiz do bundle ou a raiz do projeto em modo script."""
+    if getattr(sys, "frozen", False):
+        return str(getattr(sys, "_MEIPASS", os.getcwd()))
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _find_chrome_binary() -> tuple[str | None, str | None]:
+    """Procura Chrome portátil, instalado e disponível no PATH."""
     base_path = _get_base_path()
-
-    print("")
-    print("─" * 70)
+    print("\n" + "─" * 70)
     print("🔍  PROCURANDO GOOGLE CHROME")
-    print("─" * 70)
-    print("")
+    print("─" * 70 + "\n")
 
-    # Chrome portátil no projeto/bundle
-    print("📦 Verificando Chrome portátil (bundle/projeto)...")
-    portable_chrome_paths = [
-        os.path.join(base_path, 'deps', 'Navegador', 'chrome-win64', 'chrome.exe'),
-        os.path.join(base_path, 'Navegador', 'chrome-win64', 'chrome.exe'),
-        os.path.join(base_path, 'Chrome-bin', 'chrome.exe'),
+    portable_paths = [
+        os.path.join(base_path, "deps", "Navegador", "chrome-win64", "chrome.exe"),
+        os.path.join(base_path, "Navegador", "chrome-win64", "chrome.exe"),
+        os.path.join(base_path, "Chrome-bin", "chrome.exe"),
     ]
-
-    for chrome_path in portable_chrome_paths:
+    print("📦 Verificando Chrome portátil (bundle/projeto)...")
+    for chrome_path in portable_paths:
         print(f"   📂 Verificando: {chrome_path}")
         if os.path.exists(chrome_path):
-            print(f"   ✅ ENCONTRADO! Chrome portátil em: {chrome_path}")
-            print("")
+            print(f"   ✅ ENCONTRADO! Chrome portátil em: {chrome_path}\n")
             return chrome_path, "portátil"
-    print("   ❌ Chrome portátil não encontrado.")
-    print("")
+    print("   ❌ Chrome portátil não encontrado.\n")
 
-    # Chrome instalado no sistema
-    print("💻 Verificando Chrome instalado no sistema...")
-    system_chrome_paths = [
+    system_paths = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
         os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
         os.path.expandvars(r"%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"),
         os.path.expandvars(r"%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"),
     ]
-
-    for chrome_path in system_chrome_paths:
+    print("💻 Verificando Chrome instalado no sistema...")
+    for chrome_path in system_paths:
         print(f"   📂 Verificando: {chrome_path}")
         if os.path.exists(chrome_path):
-            print(f"   ✅ ENCONTRADO! Chrome do sistema em: {chrome_path}")
-            print("")
+            print(f"   ✅ ENCONTRADO! Chrome do sistema em: {chrome_path}\n")
             return chrome_path, "sistema"
-    print("   ❌ Chrome do sistema não encontrado (locais do Windows).")
-    print("")
+    print("   ❌ Chrome do sistema não encontrado (locais do Windows).\n")
 
-    # Linux / macOS — procura no PATH e em locais comuns de instalação
     print("🐧🍎 Verificando Chrome/Chromium no PATH e em locais Linux/macOS...")
-    for binary in ('google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'chrome'):
+    for binary in (
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+        "chrome",
+    ):
         found = shutil.which(binary)
         if found:
-            print(f"   ✅ ENCONTRADO! Chrome no PATH: {found}")
-            print("")
+            print(f"   ✅ ENCONTRADO! Chrome no PATH: {found}\n")
             return found, "sistema"
 
-    unix_chrome_paths = [
+    unix_paths = [
         "/usr/bin/google-chrome",
         "/usr/bin/google-chrome-stable",
         "/usr/bin/chromium",
@@ -99,133 +79,93 @@ def _find_chrome_binary():
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         "/Applications/Chromium.app/Contents/MacOS/Chromium",
     ]
-    for chrome_path in unix_chrome_paths:
+    for chrome_path in unix_paths:
         if os.path.exists(chrome_path):
-            print(f"   ✅ ENCONTRADO! Chrome em: {chrome_path}")
-            print("")
+            print(f"   ✅ ENCONTRADO! Chrome em: {chrome_path}\n")
             return chrome_path, "sistema"
-    print("   ❌ Chrome/Chromium não encontrado em Linux/macOS.")
-    print("")
 
-    print("⚠️  Nenhuma instalação do Chrome foi localizada.")
-    print("")
+    print("   ❌ Chrome/Chromium não encontrado em Linux/macOS.\n")
+    print("⚠️  Nenhuma instalação do Chrome foi localizada.\n")
     return None, None
 
 
-def _find_bundled_chromedriver():
-    """
-    Procura um chromedriver bundled junto com o EXE ou no projeto.
-    Retorna o caminho ou None.
-    """
+def _find_bundled_chromedriver() -> str | None:
+    """Procura ChromeDriver no bundle, no projeto e no PATH."""
     base_path = _get_base_path()
-
     print("─" * 70)
     print("🔍  PROCURANDO CHROMEDRIVER")
-    print("─" * 70)
-    print("")
+    print("─" * 70 + "\n")
 
-    print("📦 Verificando ChromeDriver bundled (bundle/projeto)...")
-    chromedriver_paths = [
-        os.path.join(base_path, 'Navegador', 'chrome-win64', 'chromedriver.exe'),
-        os.path.join(base_path, 'Navegador', 'chromedriver.exe'),
-        os.path.join(base_path, 'deps', 'Navegador', 'chrome-win64', 'chromedriver.exe'),
-        os.path.join(base_path, 'deps', 'Navegador', 'chromedriver.exe'),
-        os.path.join(base_path, 'chromedriver.exe'),
+    candidates = [
+        os.path.join(base_path, "Navegador", "chrome-win64", "chromedriver.exe"),
+        os.path.join(base_path, "Navegador", "chromedriver.exe"),
+        os.path.join(base_path, "deps", "Navegador", "chrome-win64", "chromedriver.exe"),
+        os.path.join(base_path, "deps", "Navegador", "chromedriver.exe"),
+        os.path.join(base_path, "chromedriver.exe"),
     ]
-
-    for path in chromedriver_paths:
+    print("📦 Verificando ChromeDriver bundled (bundle/projeto)...")
+    for path in candidates:
         print(f"   📂 Verificando: {path}")
         if os.path.exists(path):
-            print(f"   ✅ ENCONTRADO! ChromeDriver em: {path}")
-            print("")
+            print(f"   ✅ ENCONTRADO! ChromeDriver em: {path}\n")
             return path
-    print("   ❌ ChromeDriver bundled não encontrado.")
-    print("")
+    print("   ❌ ChromeDriver bundled não encontrado.\n")
 
-    # Também procura no PATH do sistema
-    print("💻 Verificando ChromeDriver no PATH do sistema...")
-    chromedriver_in_path = shutil.which('chromedriver')
-    if chromedriver_in_path:
-        print(f"   ✅ ENCONTRADO! ChromeDriver no PATH: {chromedriver_in_path}")
-        print("")
-        return chromedriver_in_path
-    print("   ❌ ChromeDriver não encontrado no PATH.")
-    print("")
-
-    print("ℹ️  Nenhum ChromeDriver local encontrado. Será gerenciado automaticamente.")
-    print("")
+    found = shutil.which("chromedriver")
+    if found:
+        print(f"   ✅ ENCONTRADO! ChromeDriver no PATH: {found}\n")
+        return found
+    print("   ❌ ChromeDriver não encontrado no PATH.\n")
+    print("ℹ️  Nenhum ChromeDriver local encontrado. Será gerenciado automaticamente.\n")
     return None
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  SEÇÃO 2: Inicialização do WebDriver (Selenium)
-# ══════════════════════════════════════════════════════════════════════
-
-def get_selenium_version():
-    """Exibe a versão do Selenium instalada."""
+def get_selenium_version() -> None:
+    """Exibe a versão do Selenium sem tornar a dependência obrigatória ao HTTP."""
     try:
         import selenium
-        print("")
-        print(f"Versão do Selenium: {selenium.__version__}")
-        print("")
     except ImportError:
-        print("")
-        print("O Selenium não está instalado.")
-        print("")
+        print("\nO Selenium não está instalado.\n")
+        return
+    print(f"\nVersão do Selenium: {selenium.__version__}\n")
 
 
-def _setup_selenium_manager_for_exe():
-    """
-    Configura o path do Selenium Manager para funcionar dentro de EXEs do PyInstaller.
-    O selenium-manager.exe precisa ser encontrado pelo Selenium no bundle.
-    """
-    if not getattr(sys, 'frozen', False):
+def _setup_selenium_manager_for_exe() -> None:
+    """Configura o Selenium Manager quando o processo está congelado."""
+    if not getattr(sys, "frozen", False):
         return
 
-    bundle_dir = getattr(sys, '_MEIPASS', os.getcwd())
-    sm_path = os.path.join(bundle_dir, 'selenium', 'webdriver', 'common', 'windows', 'selenium-manager.exe')
-
-    if os.path.exists(sm_path):
-        os.environ['SE_MANAGER_PATH'] = sm_path
-        print(f"✅ Selenium Manager encontrado no bundle: {sm_path}")
-        print("")
+    bundle_dir = getattr(sys, "_MEIPASS", os.getcwd())
+    platform_dir = "windows" if os.name == "nt" else "macos" if sys.platform == "darwin" else "linux"
+    filename = "selenium-manager.exe" if os.name == "nt" else "selenium-manager"
+    manager_path = os.path.join(
+        bundle_dir,
+        "selenium",
+        "webdriver",
+        "common",
+        platform_dir,
+        filename,
+    )
+    if os.path.exists(manager_path):
+        os.environ["SE_MANAGER_PATH"] = manager_path
+        print(f"✅ Selenium Manager encontrado no bundle: {manager_path}\n")
     else:
-        print(f"⚠️  Selenium Manager não encontrado em: {sm_path}")
-        print("   Tentando caminhos alternativos...")
-        print("")
+        print(f"⚠️  Selenium Manager não encontrado em: {manager_path}")
+        print("   Tentando caminhos alternativos...\n")
 
 
 def get_webdriver():
-    """
-    Inicializa o WebDriver do Chrome usando múltiplas estratégias de fallback.
-    Funciona tanto em ambiente Python quanto compilado como EXE (PyInstaller).
-
-    Estratégia de inicialização (em ordem):
-      1. ChromeDriver bundled (se existir junto ao projeto/EXE)
-      2. Selenium Manager nativo (Selenium 4.6+)
-      3. webdriver_manager via pip (apenas fora do EXE)
-
-    Raises:
-        RuntimeError: Se todas as estratégias falharem.
-    """
+    """Inicializa o Chrome com estratégias de fallback portáveis."""
     from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
 
-    print("")
-    print("═" * 70)
+    print("\n" + "═" * 70)
     print("🌐  INICIALIZANDO NAVEGADOR")
-    print("═" * 70)
-    print("")
-    print("⚙️  Configurando Chrome em modo invisível (headless)...")
-    print("")
-
-    is_frozen = getattr(sys, 'frozen', False)
-
-    # Corrigir path do Selenium Manager para EXE
+    print("═" * 70 + "\n")
+    is_frozen = getattr(sys, "frozen", False)
     _setup_selenium_manager_for_exe()
 
-    # Configurar opções do Chrome
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
@@ -233,381 +173,117 @@ def get_webdriver():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    options.add_argument(
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    options.add_experimental_option('useAutomationExtension', False)
-
-    # Flags extras para estabilidade no ambiente EXE
+    options.add_experimental_option("useAutomationExtension", False)
     if is_frozen:
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--log-level=3")
 
-    # ── Encontrar binário do Chrome ──
     chrome_path, chrome_source = _find_chrome_binary()
-
     if chrome_path:
         options.binary_location = chrome_path
-        print(f"✅ Chrome {chrome_source} encontrado: {chrome_path}")
-        print("")
+        print(f"✅ Chrome {chrome_source} encontrado: {chrome_path}\n")
     else:
         print("⚠️  Chrome não encontrado em locais conhecidos.")
-        print("   O Selenium tentará detectar automaticamente...")
-        print("")
+        print("   O Selenium tentará detectar automaticamente...\n")
 
-    # ── Inicializar o driver com múltiplas estratégias ──
-    errors = []
-
-    # === ESTRATÉGIA 1: ChromeDriver bundled ===
+    errors: list[str] = []
     bundled_driver = _find_bundled_chromedriver()
     if bundled_driver:
         try:
             print(f"🔧 [Tentativa 1/3] Usando ChromeDriver bundled: {bundled_driver}")
-            service = Service(executable_path=bundled_driver)
-            driver = webdriver.Chrome(service=service, options=options)
-            print("✅ Navegador iniciado com sucesso! (ChromeDriver bundled)")
-            print("")
-            print("─" * 70)
-            print("")
+            driver = webdriver.Chrome(
+                service=Service(executable_path=bundled_driver),
+                options=options,
+            )
+            print("✅ Navegador iniciado com sucesso! (ChromeDriver bundled)\n")
             return driver
-        except Exception as e:
-            errors.append(f"ChromeDriver bundled: {e}")
-            print(f"   ⚠️  Falhou: {e}")
-            print("")
+        except Exception as exc:
+            errors.append(f"ChromeDriver bundled: {exc}")
+            print(f"   ⚠️  Falhou: {exc}\n")
 
-    # === ESTRATÉGIA 2: Selenium Manager nativo (Selenium 4.6+) ===
     try:
         tentativa = "2/3" if bundled_driver else "1/3"
         print(f"🔧 [Tentativa {tentativa}] Usando Selenium Manager nativo...")
         driver = webdriver.Chrome(options=options)
-        print("✅ Navegador iniciado com sucesso! (Selenium Manager)")
-        print("")
-        print("─" * 70)
-        print("")
+        print("✅ Navegador iniciado com sucesso! (Selenium Manager)\n")
         return driver
-    except Exception as e:
-        errors.append(f"Selenium Manager: {e}")
-        print(f"   ⚠️  Falhou: {e}")
-        print("")
+    except Exception as exc:
+        errors.append(f"Selenium Manager: {exc}")
+        print(f"   ⚠️  Falhou: {exc}\n")
 
-    # === ESTRATÉGIA 3: webdriver_manager (apenas fora do EXE) ===
     if not is_frozen:
         try:
             print("🔧 [Tentativa 3/3] Usando webdriver_manager (pip)...")
             from webdriver_manager.chrome import ChromeDriverManager
+
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
-            print("✅ Navegador iniciado com sucesso! (webdriver_manager)")
-            print("")
-            print("─" * 70)
-            print("")
+            print("✅ Navegador iniciado com sucesso! (webdriver_manager)\n")
             return driver
         except ImportError:
-            errors.append("webdriver_manager: pacote não instalado (pip install webdriver_manager)")
-            print("   ⚠️  webdriver_manager não está instalado.")
-            print("")
-        except Exception as e:
-            errors.append(f"webdriver_manager: {e}")
-            print(f"   ⚠️  Falhou: {e}")
-            print("")
+            errors.append("webdriver_manager: pacote não instalado")
+            print("   ⚠️  webdriver_manager não está instalado.\n")
+        except Exception as exc:
+            errors.append(f"webdriver_manager: {exc}")
+            print(f"   ⚠️  Falhou: {exc}\n")
     else:
-        print("ℹ️  [Tentativa 3/3] webdriver_manager ignorado (ambiente EXE)")
-        print("")
+        print("ℹ️  [Tentativa 3/3] webdriver_manager ignorado (ambiente EXE)\n")
 
-    # ── Se todas as estratégias falharam ──
-    print("")
-    print("═" * 70)
+    print("\n" + "═" * 70)
     print("❌ ERRO CRÍTICO: Não foi possível inicializar o navegador!")
-    print("═" * 70)
-    print("")
-    print("📋 Detalhes das tentativas:")
-    for i, err in enumerate(errors, 1):
-        print(f"   {i}. {err}")
-    print("")
-    print("💡 Soluções possíveis:")
-    print("   1. Instale o Google Chrome: https://www.google.com/chrome/")
-    print("   2. Baixe o ChromeDriver compatível com seu Chrome:")
-    print("      → https://googlechromelabs.github.io/chrome-for-testing/")
-    print("      → Coloque o chromedriver.exe na pasta deps/Navegador/")
-    print("   3. Verifique se o Chrome e o ChromeDriver são da mesma versão")
-    print("   4. Execute como administrador")
-    print("")
-    print("═" * 70)
-    print("")
-
+    print("═" * 70 + "\n")
+    for index, error in enumerate(errors, 1):
+        print(f"   {index}. {error}")
+    print("\n💡 Instale o Google Chrome ou use a coleta HTTP automática.\n")
     raise RuntimeError("Não foi possível inicializar o navegador Chrome. Tentando fallback HTTP...")
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  SEÇÃO 3: Fallback — Scraping via HTTP / API v2 do SoundCloud
-# ══════════════════════════════════════════════════════════════════════
-
-def _http_get(url, headers=None):
-    """Faz GET request simples usando urllib (sem dependências extras)."""
-    from urllib.request import Request, urlopen
-    from urllib.error import URLError, HTTPError
-
-    if headers is None:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-        }
-
-    req = Request(url, headers=headers)
-    try:
-        with urlopen(req, timeout=30) as response:
-            return response.read().decode('utf-8', errors='replace')
-    except (URLError, HTTPError) as e:
-        print(f"   ⚠️  Erro HTTP: {e}")
-        return None
+def _http_get(url: str, headers: dict[str, str] | None = None) -> str | None:
+    """Fachada compatível para o cliente HTTP legado."""
+    return legacy_http.http_get(url, headers)
 
 
-def _extract_client_id(html_content):
-    """
-    Extrai o client_id do SoundCloud a partir dos scripts da página.
-    O parsing (regex de scripts e do client_id) vive em scraping.parsers; aqui só
-    fazemos o I/O (download dos scripts via _http_get, que os testes mockam).
-    """
-    print("🔑 Procurando client_id nos scripts do SoundCloud...")
-    script_urls = parsers.find_script_urls(html_content)
-    total_scripts = len(script_urls)
-    print(f"   📜 {total_scripts} scripts encontrados na página.")
-    print(f"   🔍 Analisando os últimos {min(3, total_scripts)} scripts...")
-    print("")
-
-    for i, script_url in enumerate(script_urls[-3:], 1):
-        print(f"   ⏳ [{i}/3] Analisando script: ...{script_url[-40:]}")
-        js_content = _http_get(script_url)
-        client_id = parsers.extract_client_id_from_js(js_content or "")
-        if client_id:
-            print(f"   ✅ client_id encontrado no script {i}!")
-            print("")
-            return client_id
-        if js_content:
-            print(f"   ❌ client_id não encontrado neste script.")
-        else:
-            print(f"   ⚠️  Não foi possível baixar este script.")
-
-    print("")
-    print("❌ Não foi possível encontrar o client_id em nenhum script.")
-    print("")
-    return None
+def _extract_client_id(html_content: str) -> str | None:
+    """Fachada compatível para extração de client_id."""
+    return legacy_http.extract_client_id(html_content, _http_get)
 
 
-def _resolve_soundcloud_url(url, client_id):
-    """Resolve uma URL do SoundCloud usando a API v2."""
-    print(f"   ⤴️  Resolvendo URL: {url}")
-    api_url = f"https://api-v2.soundcloud.com/resolve?url={url}&client_id={client_id}"
-    response = _http_get(api_url, headers={
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-    })
-    if response:
-        data = parsers.parse_resolved_user(response)
-        if data is not None:
-            kind = data.get('kind', 'desconhecido')
-            print(f"   ✅ Resposta recebida! Tipo: {kind}")
-            return data
-        print("   ⚠️  Resposta da API não é um JSON válido.")
-        return None
-    print("   ❌ Sem resposta da API.")
-    return None
+def _resolve_soundcloud_url(url: str, client_id: str) -> dict | None:
+    """Fachada compatível para resolução da API."""
+    return legacy_http.resolve_url(url, client_id, _http_get)
 
 
-def _get_collection_tracks(user_id, collection_type, client_id, limit=200):
-    """Coleta tracks de uma coleção do usuário via API."""
-    tracks = []
-    page = 1
-    next_href = (f"https://api-v2.soundcloud.com/users/{user_id}/{collection_type}"
-                 f"?client_id={client_id}&limit=50&offset=0"
-                 f"&linked_partitioning=1&app_locale=en")
-
-    api_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Origin': 'https://soundcloud.com',
-        'Referer': 'https://soundcloud.com/',
-    }
-
-    print("─" * 70)
-    print(f"⏳ Carregando faixas da API (tipo: {collection_type})...")
-    print("─" * 70)
-    print("")
-
-    while next_href and len(tracks) < limit * 5:
-        print(f"   📄 Carregando página {page}...")
-        response = _http_get(next_href, headers=api_headers)
-
-        if not response:
-            print("   ⚠️  Falha ao carregar página. Encerrando coleta.")
-            break
-
-        # Parsing centralizado (scraping.parsers) — devolve ([], None) em JSON inválido.
-        page_urls, next_href = parsers.parse_collection_page(response, collection_type)
-        if not page_urls:
-            print("   ℹ️  Nenhuma faixa adicional encontrada nesta página.")
-            break
-
-        for permalink_url in page_urls:
-            tracks.append(permalink_url)
-            print(f"      🔗 {permalink_url}")
-
-        print(f"   ✅ {len(page_urls)} faixa(s) encontrada(s) na página {page}")
-        print(f"   📊 Total acumulado: {len(tracks)} faixa(s)")
-        print("")
-
-        if next_href and 'client_id' not in next_href:
-            next_href += f"&client_id={client_id}"
-
-        if next_href:
-            print("   ⏳ Carregando próxima página...")
-        else:
-            print("   ℹ️  Última página alcançada.")
-
-        page += 1
-        time.sleep(0.5)
-
-    print("")
-    print("─" * 70)
-    print(f"✅ Coleta via API finalizada! Total: {len(tracks)} faixa(s)")
-    print("─" * 70)
-    print("")
-    return tracks
+def _get_collection_tracks(user_id: int, collection_type: str, client_id: str, limit: int = 200) -> list[str]:
+    """Fachada compatível para coleta paginada."""
+    return legacy_http.get_collection_tracks(
+        user_id,
+        collection_type,
+        client_id,
+        _http_get,
+        time.sleep,
+        limit,
+    )
 
 
-def _get_set_tracks(set_url, client_id):
-    """Coleta tracks de um álbum/playlist via API."""
-    print("─" * 70)
-    print("📀 Resolvendo álbum/playlist via API...")
-    print("─" * 70)
-    print("")
-
-    data = _resolve_soundcloud_url(set_url, client_id)
-    if not data:
-        print("❌ Não foi possível resolver o álbum/playlist!")
-        print("")
-        return []
-
-    set_title = data.get('title', 'Sem título')
-    total_na_playlist = len(data.get('tracks', []))
-    print(f"✅ Álbum/Playlist encontrado: {set_title}")
-    print(f"🎵 Total de faixas na playlist: {total_na_playlist}")
-    print("")
-
-    tracks = []
-    for i, track in enumerate(data.get('tracks', []), 1):
-        permalink_url = track.get('permalink_url')
-        if permalink_url:
-            tracks.append(permalink_url)
-            print(f"   ✅ [{i}/{total_na_playlist}] {permalink_url}")
-        elif track.get('id'):
-            print(f"   ⏳ [{i}/{total_na_playlist}] Faixa com ID {track['id']} — resolvendo URL...")
-            track_url = f"https://api-v2.soundcloud.com/tracks/{track['id']}?client_id={client_id}"
-            track_response = _http_get(track_url, headers={
-                'User-Agent': 'Mozilla/5.0',
-                'Accept': 'application/json',
-            })
-            if track_response:
-                try:
-                    track_data = json.loads(track_response)
-                    purl = track_data.get('permalink_url')
-                    if purl:
-                        tracks.append(purl)
-                        print(f"   ✅ [{i}/{total_na_playlist}] {purl}")
-                    else:
-                        print(f"   ⚠️  [{i}/{total_na_playlist}] URL não encontrada para ID {track['id']}")
-                except json.JSONDecodeError:
-                    print(f"   ⚠️  [{i}/{total_na_playlist}] Resposta inválida para ID {track['id']}")
-            else:
-                print(f"   ❌ [{i}/{total_na_playlist}] Falha ao resolver ID {track['id']}")
-
-    print("")
-    print("─" * 70)
-    print(f"✅ Coleta do álbum/playlist finalizada! Total: {len(tracks)} faixa(s)")
-    print("─" * 70)
-    print("")
-    return tracks
+def _get_set_tracks(set_url: str, client_id: str) -> list[str]:
+    """Fachada compatível para coleta de playlists/álbuns."""
+    return legacy_http.get_set_tracks(set_url, client_id, _resolve_soundcloud_url, _http_get)
 
 
-def http_fallback_scraper(soundcloud_link, choice):
-    """
-    Fallback: coleta links de tracks usando HTTP direto (sem Selenium).
-    Usa a API v2 do SoundCloud.
-
-    Args:
-        soundcloud_link: URL completa do SoundCloud (perfil, playlist, etc.)
-        choice: Opção escolhida pelo usuário ('1'-'7')
-
-    Returns:
-        Lista de URLs de tracks coletadas.
-    """
-    print("")
-    print("═" * 70)
-    print("🔄  MODO ALTERNATIVO: Scraping via HTTP (sem navegador)")
-    print("═" * 70)
-    print("")
-    print("⏳ Obtendo client_id do SoundCloud...")
-    print("")
-
-    html = _http_get("https://soundcloud.com")
-    if not html:
-        print("❌ Não foi possível acessar o SoundCloud!")
-        return []
-
-    client_id = _extract_client_id(html)
-    if not client_id:
-        print("❌ Não foi possível obter o client_id do SoundCloud!")
-        print("   Isso pode acontecer se o SoundCloud mudou a estrutura do site.")
-        return []
-
-    print(f"✅ client_id obtido: {client_id[:8]}...")
-    print("")
-
-    print("🔍 Resolvendo URL do artista...")
-    print("")
-
-    # Álbum/Playlist — pega direto
-    if choice in ['4', '5']:
-        print("📀 Coletando tracks do álbum/playlist...")
-        print("")
-        return _get_set_tracks(soundcloud_link, client_id)
-
-    # Perfil de artista — resolve o user_id
-    base_url = re.sub(r'/(tracks|popular-tracks|reposts|likes)$', '', soundcloud_link)
-    user_data = _resolve_soundcloud_url(base_url, client_id)
-
-    if not user_data or 'id' not in user_data:
-        print("❌ Não foi possível resolver o perfil do artista!")
-        return []
-
-    user_id = user_data['id']
-    username = user_data.get('username', 'Desconhecido')
-    track_count = user_data.get('track_count', '?')
-    print(f"✅ Artista encontrado: {username} (ID: {user_id})")
-    print(f"📊 Faixas no perfil (informado pela API): {track_count}")
-    print("")
-
-    collection_map = {
-        '1': 'tracks',
-        '2': 'toptracks',
-        '3': 'tracks',
-        '6': 'reposts',
-        '7': 'likes',
-    }
-    collection_type = collection_map.get(choice, 'tracks')
-
-    opcoes_nomes = {
-        '1': 'Todas as Faixas',
-        '2': 'Faixas Populares',
-        '3': 'Faixas',
-        '6': 'Republicações',
-        '7': 'Curtidas',
-    }
-    print(f"📊 Coletando: {opcoes_nomes.get(choice, collection_type)}")
-    print("")
-
-    return _get_collection_tracks(user_id, collection_type, client_id)
+def http_fallback_scraper(soundcloud_link: str, choice: str) -> list[str]:
+    """Executa o fallback HTTP preservando a API pública histórica."""
+    return legacy_http.fallback_scraper(
+        soundcloud_link,
+        choice,
+        _http_get,
+        _extract_client_id,
+        _resolve_soundcloud_url,
+        _get_collection_tracks,
+        _get_set_tracks,
+    )

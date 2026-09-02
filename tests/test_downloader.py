@@ -1,8 +1,8 @@
 """
 test_downloader.py — Testes automatizados para o módulo soundcloud_tracks_downloader.
 
-Como o downloader executa muito código no nível do módulo (imports, input(), etc.),
-testamos as funções utilitárias extraindo-as ou replicando a lógica testável.
+O downloader mantém o fluxo interativo, mas suas regras reutilizáveis ficam em
+``core/downloading`` e são exercitadas diretamente aqui.
 
 Testa:
   • Correção de nomes de arquivo (regex patterns)
@@ -12,10 +12,9 @@ Testa:
 """
 
 import os
-import sys
-import re
-import pytest
-from unittest.mock import patch, MagicMock
+
+from downloading.metadata import enrich_metadata
+from downloading.options import build_ydl_options, rename_downloaded_files
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -23,59 +22,40 @@ from unittest.mock import patch, MagicMock
 # ══════════════════════════════════════════════════════════════════════
 
 class TestCorrigirNomeArquivo:
-    """Testa a lógica de corrigir_nome_arquivo (regex patterns)."""
+    """Testa a renomeação real compartilhada pelo CLI e pelo backend."""
 
-    def _apply_rename_logic(self, filename):
-        """Replica a lógica de renomeação do downloader."""
-        novo_nome = filename
-        novo_nome = re.sub(r'NA - ', '', novo_nome)    # Remove "NA -"
-        novo_nome = re.sub(r'_', ' ', novo_nome)       # Substitui "_" por espaço
-        novo_nome = re.sub(r'_-_', '-', novo_nome)     # Substitui "_-_" por "-"
-        return novo_nome
-
-    def test_removes_NA_dash(self):
+    def test_removes_NA_dash(self, tmp_path):
         """Deve remover 'NA - ' do nome."""
-        result = self._apply_rename_logic('NA - Artist - Title.mp3')
-        assert 'NA - ' not in result
-        assert 'Artist' in result
+        (tmp_path / 'NA - Artist - Title.mp3').write_text('audio')
+        renamed = rename_downloaded_files(tmp_path)
+        assert renamed == ['Artist - Title.mp3']
 
-    def test_replaces_underscores_with_spaces(self):
+    def test_replaces_underscores_with_spaces(self, tmp_path):
         """Deve substituir underscores por espaços."""
-        result = self._apply_rename_logic('Artist_Name_-_Track_Title.mp3')
-        assert '_' not in result
-        assert ' ' in result
+        (tmp_path / 'Artist_Name_-_Track_Title.mp3').write_text('audio')
+        renamed = rename_downloaded_files(tmp_path)
+        assert renamed == ['Artist Name - Track Title.mp3']
 
-    def test_no_change_for_clean_names(self):
+    def test_no_change_for_clean_names(self, tmp_path):
         """Nomes limpos não devem ser alterados (exceto underscores)."""
-        result = self._apply_rename_logic('Artist - Track Title.mp3')
-        assert result == 'Artist - Track Title.mp3'
+        (tmp_path / 'Artist - Track Title.mp3').write_text('audio')
+        assert rename_downloaded_files(tmp_path) == []
 
-    def test_handles_multiple_NA(self):
+    def test_handles_multiple_NA(self, tmp_path):
         """Deve remover múltiplos 'NA - ' se existirem."""
-        result = self._apply_rename_logic('NA - NA - Title.mp3')
-        # Primeiro NA - é removido, segundo permanece parcialmente
-        assert not result.startswith('NA - ')
+        (tmp_path / 'NA - NA - Title.mp3').write_text('audio')
+        assert rename_downloaded_files(tmp_path) == ['Title.mp3']
 
     def test_actual_rename_in_directory(self, temp_dir):
         """Testa a renomeação real de arquivos no diretório."""
-        # Cria arquivo com nome "sujo"
-        dirty_name = 'NA_-_Artist_-_Track.mp3'
+        dirty_name = 'NA - Artist_Name.mp3'
         filepath = os.path.join(temp_dir, dirty_name)
         with open(filepath, 'w') as f:
             f.write('fake audio')
 
-        # Aplica a lógica do corrigir_nome_arquivo
-        for filename in os.listdir(temp_dir):
-            novo_nome = self._apply_rename_logic(filename)
-            if novo_nome != filename:
-                os.rename(
-                    os.path.join(temp_dir, filename),
-                    os.path.join(temp_dir, novo_nome)
-                )
-
-        files = os.listdir(temp_dir)
-        assert len(files) == 1
-        assert '_' not in files[0] or 'NA' not in files[0]
+        renamed = rename_downloaded_files(temp_dir)
+        assert renamed == ['Artist Name.mp3']
+        assert os.listdir(temp_dir) == ['Artist Name.mp3']
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -200,26 +180,19 @@ class TestYdlOpts:
 
     def test_mp3_format_config(self):
         """Configuração para MP3 deve ter codec e qualidade corretos."""
-        config = {
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '320',
-        }
+        config = build_ydl_options('/tmp/downloads', 'mp3')['postprocessors'][0]
         assert config['preferredcodec'] == 'mp3'
         assert config['preferredquality'] == '320'
 
     def test_flac_format_config(self):
         """Configuração para FLAC não deve ter preferredquality."""
-        config = {
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'flac',
-        }
+        config = build_ydl_options('/tmp/downloads', 'flac')['postprocessors'][0]
         assert config['preferredcodec'] == 'flac'
         assert 'preferredquality' not in config
 
     def test_output_template_format(self):
         """Template de output deve conter uploader, artist e title."""
-        template = '%(uploader)s - %(artist)s - %(title)s.%(ext)s'
+        template = build_ydl_options('/tmp/downloads', 'mp3')['outtmpl']
         assert '%(uploader)s' in template
         assert '%(artist)s' in template
         assert '%(title)s' in template
@@ -227,11 +200,7 @@ class TestYdlOpts:
 
     def test_postprocessors_include_metadata(self):
         """Postprocessors devem incluir FFmpegMetadata e EmbedThumbnail."""
-        postprocessors = [
-            {'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'},
-            {'key': 'FFmpegMetadata', 'add_metadata': True},
-            {'key': 'EmbedThumbnail'},
-        ]
+        postprocessors = build_ydl_options('/tmp/downloads', 'mp3')['postprocessors']
         keys = [pp['key'] for pp in postprocessors]
         assert 'FFmpegMetadata' in keys
         assert 'EmbedThumbnail' in keys
@@ -243,86 +212,49 @@ class TestYdlOpts:
 # ══════════════════════════════════════════════════════════════════════
 
 class TestAddCustomMetadata:
-    """Testa a lógica do postprocessador de metadados."""
-
-    def _apply_metadata_logic(self, info):
-        """Replica a lógica do AddCustomMetadataPP.run() sem precisar importar o módulo."""
-        info['title'] = info.get('title', '')
-        info['artist'] = info.get('artist', '') or info.get('uploader', '')
-
-        # Álbum
-        album_name = None
-        if info.get('album'):
-            album_name = info['album']
-        elif info.get('playlist'):
-            album_name = info['playlist']
-        elif info.get('playlist_title'):
-            album_name = info['playlist_title']
-        if album_name:
-            info['album'] = album_name
-
-        # Data
-        if info.get('upload_date'):
-            from datetime import datetime
-            try:
-                date_obj = datetime.strptime(info['upload_date'], '%Y%m%d')
-                info['date'] = str(date_obj.year)
-            except Exception:
-                info['date'] = info['upload_date'][:4] if len(info['upload_date']) >= 4 else info['upload_date']
-
-        # Comentário
-        comment_parts = [
-            "Downloaded by SoundScraper",
-            f"Source: {info.get('webpage_url', 'SoundCloud')}",
-            "",
-            "GitHub: https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader"
-        ]
-        info['comment'] = '\n'.join(comment_parts)
-        info['encoder'] = 'SoundScraper v1.0'
-
-        return info
+    """Testa a normalização real de metadados do postprocessor."""
 
     def test_artist_fallback_to_uploader(self):
         """Se artist estiver vazio, deve usar uploader."""
         info = {'artist': '', 'uploader': 'Test Artist', 'title': 'Song'}
-        result = self._apply_metadata_logic(info)
+        result = enrich_metadata(info)
         assert result['artist'] == 'Test Artist'
 
     def test_artist_uses_artist_if_present(self):
         """Se artist existir, deve usar artist (não uploader)."""
         info = {'artist': 'Real Artist', 'uploader': 'Uploader Name', 'title': 'Song'}
-        result = self._apply_metadata_logic(info)
+        result = enrich_metadata(info)
         assert result['artist'] == 'Real Artist'
 
     def test_album_from_playlist_title(self):
         """Se album não existir, deve tentar playlist_title."""
         info = {'title': 'Song', 'playlist_title': 'My Playlist'}
-        result = self._apply_metadata_logic(info)
+        result = enrich_metadata(info)
         assert result.get('album') == 'My Playlist'
 
     def test_upload_date_parsing(self):
         """Deve parsear upload_date no formato YYYYMMDD."""
         info = {'title': 'Song', 'upload_date': '20231115'}
-        result = self._apply_metadata_logic(info)
+        result = enrich_metadata(info)
         assert result['date'] == '2023'
 
     def test_comment_contains_soundscraper(self):
         """Comentário deve conter referência ao SoundScraper."""
         info = {'title': 'Song', 'webpage_url': 'https://soundcloud.com/test/song'}
-        result = self._apply_metadata_logic(info)
+        result = enrich_metadata(info)
         assert 'SoundScraper' in result['comment']
         assert 'soundcloud.com/test/song' in result['comment']
 
     def test_encoder_set_correctly(self):
-        """encoder deve ser 'SoundScraper v1.0'."""
+        """encoder deve identificar a versão atual do SoundScraper."""
         info = {'title': 'Song'}
-        result = self._apply_metadata_logic(info)
-        assert result['encoder'] == 'SoundScraper v1.0'
+        result = enrich_metadata(info)
+        assert result['encoder'] == 'SoundScraper v3.0'
 
     def test_empty_info_dict(self):
         """Não deve crashar com info dict vazio."""
         info = {}
-        result = self._apply_metadata_logic(info)
+        result = enrich_metadata(info)
         assert 'title' in result
         assert 'comment' in result
 
@@ -422,5 +354,5 @@ class TestDependencies:
         req_file = os.path.join(project_root, 'deps', 'requirements.txt')
 
         with open(req_file, 'r') as f:
-            packages = [l.strip() for l in f if l.strip() and not l.startswith('#')]
+            packages = [line.strip() for line in f if line.strip() and not line.startswith('#')]
         assert len(packages) > 0, "requirements.txt está vazio"

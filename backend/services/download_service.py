@@ -5,11 +5,12 @@ para uso via WebSocket, sem depender de input()/print() do console.
 
 import asyncio
 import os
-import re
 import sys
 import time
 from queue import Empty, Queue
 from pathlib import Path
+
+from backend.core.validation import validate_track_url
 
 # Adiciona o diretório core/ ao path
 _core_dir = str(Path(__file__).parent.parent.parent / "core")
@@ -31,57 +32,25 @@ def _get_ffmpeg_path():
 
 
 def _get_ydl_opts(output_dir: str, audio_format: str, ffmpeg_path: str | None) -> dict:
-    """Monta as opções do yt-dlp."""
-    ffmpeg_extract = {
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': audio_format,
-    }
-    if audio_format == 'mp3':
-        ffmpeg_extract['preferredquality'] = '320'
+    """Fachada compatível para as opções compartilhadas do yt-dlp."""
+    from downloading.options import build_ydl_options
 
-    opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': os.path.join(output_dir, '%(uploader)s - %(artist)s - %(title)s.%(ext)s'),
-        'restrictfilenames': True,
-        'postprocessors': [
-            ffmpeg_extract,
-            {'key': 'FFmpegMetadata', 'add_metadata': True},
-            {'key': 'EmbedThumbnail'},
-        ],
-        'writethumbnail': True,
-        'prefer_ffmpeg': True,
-        'socket_timeout': YTDLP_SOCKET_TIMEOUT,
-        'retries': YTDLP_RETRIES,
-        'fragment_retries': YTDLP_RETRIES,
-        'extractor_retries': YTDLP_RETRIES,
-        'file_access_retries': YTDLP_RETRIES,
-        'quiet': True,
-        'no_warnings': True,
-    }
-    # Só fixa o ffmpeg_location quando temos um caminho; senão deixa o yt-dlp resolver pelo PATH.
-    if ffmpeg_path:
-        opts['ffmpeg_location'] = ffmpeg_path
-    return opts
+    options = build_ydl_options(
+        output_dir,
+        audio_format,
+        ffmpeg_path,
+        socket_timeout=YTDLP_SOCKET_TIMEOUT,
+        retries=YTDLP_RETRIES,
+    )
+    options.update({"quiet": True, "no_warnings": True})
+    return options
 
 
 def _corrigir_nomes(output_dir: str) -> list:
-    """Corrige nomes de arquivos, removendo NA e underscores. Retorna renomeados."""
-    renamed = []
-    for fname in os.listdir(output_dir):
-        novo = fname
-        novo = re.sub(r'NA - ', '', novo)
-        novo = re.sub(r'_', ' ', novo)
-        novo = re.sub(r'_-_', '-', novo)
-        if novo != fname:
-            try:
-                os.rename(
-                    os.path.join(output_dir, fname),
-                    os.path.join(output_dir, novo)
-                )
-                renamed.append(novo)
-            except Exception:
-                pass
-    return renamed
+    """Fachada compatível para normalização de nomes."""
+    from downloading.options import rename_downloaded_files
+
+    return rename_downloaded_files(output_dir)
 
 
 def _download_single(url: str, ydl_opts: dict, progress_queue: Queue | None = None) -> dict:
@@ -90,60 +59,9 @@ def _download_single(url: str, ydl_opts: dict, progress_queue: Queue | None = No
     Versão síncrona para rodar em thread.
     """
     import yt_dlp
+    from downloading.metadata import AddCustomMetadataPP
 
-    # Postprocessor para capturar metadados
     captured_meta = {}
-
-    class CaptureMeta(yt_dlp.postprocessor.PostProcessor):  # type: ignore[attr-defined]
-        def run(self, info):
-            info['artist'] = info.get('artist', '') or info.get('uploader', '')
-
-            # Álbum
-            for key in ('album', 'playlist', 'playlist_title'):
-                if info.get(key):
-                    info['album'] = info[key]
-                    break
-
-            # Data
-            if info.get('upload_date'):
-                try:
-                    from datetime import datetime
-                    d = datetime.strptime(info['upload_date'], '%Y%m%d')
-                    info['date'] = str(d.year)
-                    info['timestamp'] = d.strftime('%Y-%m-%d')
-                except Exception:
-                    info['date'] = info['upload_date'][:4]
-
-            # Tags
-            if info.get('tags') and isinstance(info['tags'], list):
-                info['keywords'] = ', '.join(info['tags'])
-
-            # Descrição curta em lyrics
-            if info.get('description') and len(info['description']) < 500:
-                info['lyrics'] = info['description']
-
-            # Licença
-            if info.get('license'):
-                info['copyright'] = info['license']
-
-            # Comentário do SoundScraper
-            info['comment'] = '\n'.join([
-                "Downloaded by SoundScraper",
-                f"Source: {info.get('webpage_url', 'SoundCloud')}",
-                "",
-                "GitHub: https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader"
-            ])
-            info['encoder'] = 'SoundScraper v3.0'
-
-            captured_meta.update({
-                'title': info.get('title', ''),
-                'artist': info.get('artist', ''),
-                'genre': info.get('genre', ''),
-                'duration': info.get('duration', 0),
-                'webpage_url': info.get('webpage_url', ''),
-            })
-
-            return [], info
 
     try:
         local_opts = dict(ydl_opts)
@@ -163,8 +81,8 @@ def _download_single(url: str, ydl_opts: dict, progress_queue: Queue | None = No
 
             local_opts["progress_hooks"] = [_progress_hook]
 
-        with yt_dlp.YoutubeDL(local_opts) as ydl:  # type: ignore[arg-type]
-            ydl.add_post_processor(CaptureMeta(), when='pre_process')
+        with yt_dlp.YoutubeDL(local_opts) as ydl:
+            ydl.add_post_processor(AddCustomMetadataPP(captured_meta), when="pre_process")
             ydl.download([url])
 
         return {
@@ -183,14 +101,23 @@ def _download_single(url: str, ydl_opts: dict, progress_queue: Queue | None = No
 async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_event):
     """
     Executa o download de uma lista de faixas.
-    
+
     Args:
         tracks: Lista de URLs para baixar
         output_dir: Pasta de destino
         audio_format: 'flac' ou 'mp3'
         send_event: Coroutine async para enviar eventos ao frontend.
     """
-    total = len(tracks)
+    from downloading.options import normalize_audio_format
+
+    if not tracks:
+        raise ValueError("A lista de faixas não pode estar vazia.")
+    normalized_tracks = [validate_track_url(track) for track in tracks]
+    output_dir = output_dir.strip()
+    if not output_dir or "\x00" in output_dir:
+        raise ValueError("A pasta de destino é inválida.")
+    audio_format = normalize_audio_format(audio_format)
+    total = len(normalized_tracks)
 
     await send_event({
         "type": "log",
@@ -214,7 +141,7 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
     sucessos = 0
     erros = 0
 
-    for i, url in enumerate(tracks, 1):
+    for i, url in enumerate(normalized_tracks, 1):
         track_started = time.monotonic()
         await send_event({
             "type": "start",
@@ -273,7 +200,7 @@ async def run_downloader(tracks: list, output_dir: str, audio_format: str, send_
             meta = result.get("metadata", {})
 
             # Corrigir nomes
-            renamed = await asyncio.to_thread(_corrigir_nomes, output_dir)
+            await asyncio.to_thread(_corrigir_nomes, output_dir)
 
             await send_event({
                 "type": "complete",

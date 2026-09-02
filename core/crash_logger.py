@@ -285,18 +285,18 @@ def _start_session_log():
     # Cabeçalho do log de sessão
     try:
         with open(session_log_path, 'w', encoding='utf-8') as f:
-            f.write(f"╔══════════════════════════════════════════════════════════════════════╗\n")
-            f.write(f"║             SOUNDSCRAPER — LOG DE SESSÃO                            ║\n")
-            f.write(f"╚══════════════════════════════════════════════════════════════════════╝\n")
-            f.write(f"\n")
+            f.write("╔══════════════════════════════════════════════════════════════════════╗\n")
+            f.write("║             SOUNDSCRAPER — LOG DE SESSÃO                            ║\n")
+            f.write("╚══════════════════════════════════════════════════════════════════════╝\n")
+            f.write("\n")
             f.write(f"📅 Início: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}\n")
-            f.write(f"\n")
+            f.write("\n")
             f.write(f"{_get_system_info()}\n")
-            f.write(f"\n")
-            f.write(f"══════════════════════════════════════════════════════════════════════\n")
-            f.write(f"📋 SAÍDA DO PROGRAMA\n")
-            f.write(f"══════════════════════════════════════════════════════════════════════\n")
-            f.write(f"\n")
+            f.write("\n")
+            f.write("══════════════════════════════════════════════════════════════════════\n")
+            f.write("📋 SAÍDA DO PROGRAMA\n")
+            f.write("══════════════════════════════════════════════════════════════════════\n")
+            f.write("\n")
     except Exception:
         return None
 

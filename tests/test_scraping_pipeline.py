@@ -14,6 +14,7 @@ from scraping import registry
 from scraping import pipeline
 from scraping.config import ScraperConfig
 from scraping.models import TrackLink, SOURCE_HTTP_API
+from scraping.adapters import http_api
 
 # Fixtures sanitizadas (espelham as do conftest.py; reproduzidas aqui para
 # importação direta, já que conftest não é um módulo importável por nome).
@@ -200,9 +201,6 @@ class TestPipeline:
 
 
 # ── Paginação por cursor (loop seguindo next_href) ──────────────────
-
-from scraping.adapters import http_api
-
 
 def _page(urls, next_href):
     """Monta o corpo JSON de uma página de coleção com next_href explícito."""

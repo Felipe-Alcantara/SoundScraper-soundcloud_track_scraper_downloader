@@ -10,13 +10,11 @@ Testa:
 """
 
 import os
-import sys
-import re
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 # Importa o módulo a ser testado
 import soundcloud_track_scraper as scraper
+from scraping.registry import CHOICES, CSS_SELECTOR_PROFILE, CSS_SELECTOR_SET, css_selector_for
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -192,39 +190,22 @@ class TestOpcoesNomes:
     """Verifica consistência do mapeamento de opções."""
 
     def test_all_choices_have_names(self):
-        """Todas as 7 opções devem ter nomes no opcoes_nomes do scraper."""
-        # O opcoes_nomes está dentro de soundcloud_track_scraper()
-        # Verificamos via inspeção do código fonte
-        import inspect
-        source = inspect.getsource(scraper.soundcloud_track_scraper)
-
-        expected_options = {
-            "'1'": "Todas as Faixas",
-            "'2'": "Faixas Populares",
-            "'3'": "Faixas",
-            "'4'": "Álbuns",
-            "'5'": "Playlists",
-            "'6'": "Republicações",
-            "'7'": "Curtidas",
-        }
-
-        for key, name in expected_options.items():
-            assert key in source, f"Chave {key} não encontrada no opcoes_nomes"
-            assert name in source, f"Nome '{name}' não encontrado no opcoes_nomes"
+        """O registry canônico expõe nome para cada uma das sete escolhas."""
+        assert set(CHOICES) == {str(number) for number in range(1, 8)}
+        assert [CHOICES[str(number)].name for number in range(1, 8)] == [
+            "Todas as Faixas",
+            "Faixas Populares",
+            "Faixas",
+            "Álbuns",
+            "Playlists",
+            "Republicações",
+            "Curtidas",
+        ]
 
     def test_no_duplicate_names(self):
-        """Não deve ter nomes duplicados no mapeamento."""
-        import inspect
-        source = inspect.getsource(scraper.soundcloud_track_scraper)
-
-        names = ["Todas as Faixas", "Faixas Populares", "Faixas", "Álbuns",
-                 "Playlists", "Republicações", "Curtidas"]
-
-        # Cada nome deve aparecer exatamente 1 vez no opcoes_nomes
-        # (pode aparecer mais vezes nos prints, mas no dict apenas 1)
-        for name in names:
-            count = source.count(f"'{name}'")
-            assert count >= 1, f"Nome '{name}' não encontrado no código"
+        """As sete opções têm rótulos humanos distintos."""
+        names = [spec.name for spec in CHOICES.values()]
+        assert len(names) == len(set(names))
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -235,21 +216,16 @@ class TestCssSelectors:
     """Verifica uso correto dos CSS selectors."""
 
     def test_album_playlist_uses_tracklist_selector(self):
-        """Opções 4/5 devem usar selector de álbum/playlist."""
-        import inspect
-        source = inspect.getsource(scraper.soundcloud_track_scraper)
-
-        # Verifica que o código usa selector diferente para álbuns/playlists
-        assert "li.trackList__item a.trackItem__trackTitle" in source
-        assert "a.soundTitle__title" in source
+        """Opções 4/5 usam o seletor de lista de sets."""
+        assert CSS_SELECTOR_SET == "li.trackList__item a.trackItem__trackTitle"
+        assert css_selector_for(CHOICES["4"]) == CSS_SELECTOR_SET
+        assert css_selector_for(CHOICES["5"]) == CSS_SELECTOR_SET
 
     def test_selector_logic_for_choices(self):
-        """O selector deve ser determinado corretamente pela choice."""
-        import inspect
-        source = inspect.getsource(scraper.soundcloud_track_scraper)
-
-        # Verifica que choices 4/5 usam o selector de lista
-        assert "choice in ['4', '5']" in source
+        """Perfis usam o seletor de título e sets usam o seletor de tracklist."""
+        assert CSS_SELECTOR_PROFILE == "a.soundTitle__title"
+        for key in ("1", "2", "3", "6", "7"):
+            assert css_selector_for(CHOICES[key]) == CSS_SELECTOR_PROFILE
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -292,7 +268,7 @@ class TestSaveTrackLinks:
         scraper.save_track_links(filepath, mock_tracks)
 
         with open(filepath, 'r') as f:
-            lines = [l.strip() for l in f if l.strip()]
+            lines = [line.strip() for line in f if line.strip()]
         # Set garante unicidade — deve ter apenas 1
         assert len(lines) == 1
 
@@ -309,7 +285,7 @@ class TestSaveTrackLinks:
         scraper.save_track_links(filepath, [mock_with_url, mock_without_url])
 
         with open(filepath, 'r') as f:
-            lines = [l.strip() for l in f if l.strip()]
+            lines = [line.strip() for line in f if line.strip()]
         assert len(lines) == 1
 
 

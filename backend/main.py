@@ -4,8 +4,7 @@ Ponto de entrada do backend. Serve a API REST + WebSocket
 e, em produção, serve os arquivos estáticos do frontend.
 """
 
-import os
-import sys
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -16,13 +15,16 @@ from fastapi.staticfiles import StaticFiles
 from backend.api.routes import scraper, download, config
 
 
+logger = logging.getLogger(__name__)
+
+
 # ── Lifecycle ──────────────────────────────────────────────────────
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     """Startup / shutdown do servidor."""
-    print("🚀 SoundScraper API iniciada")
+    logger.info("SoundScraper API iniciada")
     yield
-    print("🛑 SoundScraper API encerrada")
+    logger.info("SoundScraper API encerrada")
 
 
 # ── App ────────────────────────────────────────────────────────────
@@ -42,9 +44,9 @@ app.add_middleware(
         "http://localhost:8000",   # Produção
         "http://127.0.0.1:8000",
     ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # ── Rotas da API ───────────────────────────────────────────────────

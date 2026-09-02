@@ -14,8 +14,6 @@ Testa:
 import os
 import sys
 import pytest
-import tempfile
-import shutil
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
@@ -206,7 +204,7 @@ class TestGenerateCrashLog:
                 except Exception:
                     exc_type, exc_value, exc_tb = sys.exc_info()
                     # Não deve crashar mesmo se não conseguir salvar
-                    log_path = cl._generate_crash_log(exc_type, exc_value, exc_tb)
+                    cl._generate_crash_log(exc_type, exc_value, exc_tb)
 
 
 # ══════════════════════════════════════════════════════════════════════

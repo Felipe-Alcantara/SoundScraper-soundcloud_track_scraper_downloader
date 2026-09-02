@@ -2,20 +2,38 @@
 Rota de Download — gerencia o download e conversão de faixas.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+import logging
+from typing import Literal
 
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field, field_validator
+
+from backend.core.validation import validate_track_url
 from backend.services.download_service import run_downloader
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ────────────────────────────────────────────────────────
 class DownloadRequest(BaseModel):
     """Payload para iniciar downloads."""
-    tracks: list[str] = Field(..., description="Lista de URLs das faixas")
-    output_dir: str = Field(..., description="Pasta de destino")
-    format: str = Field("flac", description="Formato de áudio: 'flac' ou 'mp3'")
+    tracks: list[str] = Field(..., min_length=1, description="Lista de URLs das faixas")
+    output_dir: str = Field(..., min_length=1, max_length=4096, description="Pasta de destino")
+    format: Literal["flac", "mp3"] = Field("flac", description="Formato de áudio")
+
+    @field_validator("tracks")
+    @classmethod
+    def valid_track_urls(cls, values: list[str]) -> list[str]:
+        return [validate_track_url(value) for value in values]
+
+    @field_validator("output_dir")
+    @classmethod
+    def safe_output_dir(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized or "\x00" in normalized:
+            raise ValueError("A pasta de destino é inválida.")
+        return normalized
 
 
 class DownloadResponse(BaseModel):
@@ -43,8 +61,9 @@ async def download_tracks(request: DownloadRequest):
             failed=result["failed"],
             message=f"Concluído: {result['downloaded']} baixadas, {result['failed']} erros."
         )
-    except Exception as e:
-        return DownloadResponse(success=False, message=str(e))
+    except Exception:
+        logger.exception("Falha inesperada no download REST")
+        return DownloadResponse(success=False, message="Não foi possível concluir o download.")
 
 
 @router.websocket("/ws/download")
@@ -78,8 +97,9 @@ async def download_ws(websocket: WebSocket):
 
     except WebSocketDisconnect:
         pass
-    except Exception as e:
+    except Exception:
+        logger.exception("Falha inesperada no WebSocket de download")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "Falha interna no download."})
         except Exception:
             pass

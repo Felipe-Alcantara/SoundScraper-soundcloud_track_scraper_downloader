@@ -3,25 +3,35 @@ Rota de Scraping — coleta links de faixas do SoundCloud.
 Expõe endpoints REST e um WebSocket para progresso em tempo real.
 """
 
+import logging
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from backend.services.scraper_service import run_scraper
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ────────────────────────────────────────────────────────
 class ScrapeRequest(BaseModel):
     """Payload para iniciar uma coleta de faixas."""
-    url: str = Field(..., description="URL do perfil/playlist do SoundCloud")
-    choice: str = Field("3", description="Opção: 1=Todas, 2=Populares, 3=Faixas, 4=Álbuns, 5=Playlists, 6=Reposts, 7=Curtidas")
+    url: str = Field(..., min_length=1, max_length=2048, description="URL do perfil/playlist do SoundCloud")
+    choice: str = Field("3", pattern=r"^[1-7]$", description="Opção de coleta de 1 a 7")
+
+    @field_validator("url")
+    @classmethod
+    def url_without_control_chars(cls, value: str) -> str:
+        if any(ord(char) < 32 for char in value):
+            raise ValueError("A URL contém caracteres de controle.")
+        return value.strip()
 
 
 class ScrapeResponse(BaseModel):
     """Resposta com os links coletados."""
     success: bool
-    tracks: list[str] = []
+    tracks: list[str] = Field(default_factory=list)
     total: int = 0
     message: str = ""
 
@@ -44,8 +54,9 @@ async def scrape_tracks(request: ScrapeRequest):
             total=len(result),
             message=f"Coleta concluída: {len(result)} faixa(s)."
         )
-    except Exception as e:
-        return ScrapeResponse(success=False, message=str(e))
+    except Exception:
+        logger.exception("Falha inesperada na coleta REST")
+        return ScrapeResponse(success=False, message="Não foi possível concluir a coleta.")
 
 
 @router.websocket("/ws/scrape")
@@ -79,8 +90,9 @@ async def scrape_ws(websocket: WebSocket):
 
     except WebSocketDisconnect:
         pass
-    except Exception as e:
+    except Exception:
+        logger.exception("Falha inesperada no WebSocket de coleta")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "Falha interna na coleta."})
         except Exception:
             pass

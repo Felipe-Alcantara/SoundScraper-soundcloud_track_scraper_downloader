@@ -2,14 +2,14 @@
 Rota de Configuração — file dialog, info do sistema, etc.
 """
 
+import logging
 import platform
-import sys
-from pathlib import Path
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ── Schemas ────────────────────────────────────────────────────────
@@ -64,5 +64,6 @@ async def select_folder():
             return FolderResponse(success=True, path=folder)
         return FolderResponse(success=False, message="Nenhuma pasta selecionada.")
 
-    except Exception as e:
-        return FolderResponse(success=False, message=f"Erro ao abrir seletor: {e}")
+    except Exception:
+        logger.exception("Falha ao abrir seletor de pasta")
+        return FolderResponse(success=False, message="Não foi possível abrir o seletor de pastas.")

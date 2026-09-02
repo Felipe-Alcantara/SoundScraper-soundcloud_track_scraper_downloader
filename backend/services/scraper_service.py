@@ -11,6 +11,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+from backend.core.validation import normalize_soundcloud_url
+
 # Adiciona o diretório core/ ao path para importar o pacote scraping.
 _core_dir = str(Path(__file__).parent.parent.parent / "core")
 if _core_dir not in sys.path:
@@ -22,14 +24,7 @@ def _normalize_profile_url(url: str) -> str | None:
     Normaliza a entrada do usuário para 'https://soundcloud.com/<artista>'.
     Aceita URL completa, 'soundcloud.com/x' ou só o username. None se inválida.
     """
-    clean = url.strip().replace("http://", "").replace("https://", "").rstrip("/")
-    if not clean.startswith("soundcloud.com"):
-        clean = f"soundcloud.com/{clean}"
-    parts = clean.split("/")
-    if len(parts) < 2 or not parts[1]:
-        return None
-    # Mantém o caminho completo (perfil, ou link de set para álbum/playlist).
-    return f"https://{clean}"
+    return normalize_soundcloud_url(url)
 
 
 async def run_scraper(url: str, choice: str, send_event):

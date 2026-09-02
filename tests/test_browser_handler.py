@@ -13,9 +13,7 @@ Testa:
 """
 
 import os
-import sys
 import json
-import pytest
 from unittest.mock import patch, MagicMock
 
 # Importa o módulo a ser testado
@@ -144,9 +142,15 @@ class TestSetupSeleniumManager:
     def test_sets_env_when_frozen_and_exists(self, mock_frozen, temp_dir):
         """No EXE, deve setar SE_MANAGER_PATH se o arquivo existir."""
         mock_frozen(temp_dir)
-        sm_dir = os.path.join(temp_dir, 'selenium', 'webdriver', 'common', 'windows')
+        platform_dir = (
+            'windows' if bh.os.name == 'nt'
+            else 'macos' if bh.sys.platform == 'darwin'
+            else 'linux'
+        )
+        manager_name = 'selenium-manager.exe' if bh.os.name == 'nt' else 'selenium-manager'
+        sm_dir = os.path.join(temp_dir, 'selenium', 'webdriver', 'common', platform_dir)
         os.makedirs(sm_dir)
-        sm_exe = os.path.join(sm_dir, 'selenium-manager.exe')
+        sm_exe = os.path.join(sm_dir, manager_name)
         with open(sm_exe, 'w') as f:
             f.write('fake')
 
@@ -462,7 +466,7 @@ class TestHttpFallbackScraper:
         with patch.object(bh, '_http_get', return_value='<html></html>'):
             with patch.object(bh, '_extract_client_id', return_value='fake_client_id'):
                 with patch.object(bh, '_get_set_tracks', return_value=["url1"]) as mock_set:
-                    result = bh.http_fallback_scraper("https://soundcloud.com/a/sets/playlist", '5')
+                    bh.http_fallback_scraper("https://soundcloud.com/a/sets/playlist", '5')
                     mock_set.assert_called_once()
 
     def test_collection_type_mapping(self):
