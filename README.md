@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![yt-dlp](https://img.shields.io/badge/yt--dlp-powered-red.svg)](https://github.com/yt-dlp/yt-dlp)
-[![Tests](https://img.shields.io/badge/Tests-162%20passing-brightgreen.svg)](#-testes-automatizados)
+[![Tests](https://img.shields.io/badge/Tests-181%20Python%20%2B%203%20frontend-brightgreen.svg)](#-testes-automatizados)
 [![Cross-platform](https://img.shields.io/badge/SO-Windows%20%7C%20Linux%20%7C%20macOS-informational.svg)](#-requisitos)
 
 **Ferramenta para arquivamento de coleções musicais do SoundCloud — com interface Web e CLI.**
@@ -57,8 +57,7 @@ o modo CLI — a interface Web continua rodando a partir do código-fonte, com `
 
 ## 🚀 Início rápido
 
-A forma mais simples — **um único comando** instala dependências, builda o frontend, sobe o servidor e abre o
-navegador:
+O launcher interativo concentra instalação, configuração, status e execução:
 
 ```bash
 git clone https://github.com/Felipe-Alcantara/SoundScraper-soundcloud_track_scraper_downloader.git
@@ -66,31 +65,55 @@ cd SoundScraper-soundcloud_track_scraper_downloader
 python start_app.py
 ```
 
-Na primeira execução, o script cria o ambiente virtual `.venv/` e instala as
-dependências Python nele. Isso evita conflitos com instalações Linux protegidas
-pelo PEP 668; as dependências não são instaladas no Python do sistema.
+Escolha `Iniciar` para produção (API + frontend em `http://127.0.0.1:8000`),
+`Instalar` para preparar `.venv`, npm e FFmpeg, `Configurar` para gravar apenas
+host/portas/abertura do navegador no `.env`, ou `Status` para verificar o ambiente.
+Na primeira instalação, o script cria o ambiente virtual `.venv/`, usa `npm ci`
+e evita conflitos com instalações Linux protegidas pelo PEP 668.
+O arquivo `.env.example` documenta os defaults; o `.env` local é ignorado pelo Git.
 
 Pré-requisitos: **Python 3.10+**. Para a interface web também é preciso **Node.js** (para buildar o frontend);
 sem Node, a API REST/WebSocket continua disponível. **FFmpeg** é necessário para o download (ver
 [Requisitos](#-requisitos)).
+
+Para automação sem o menu, os argumentos históricos continuam disponíveis:
+
+```bash
+python start_app.py --no-browser
+python start_app.py restart --no-browser
+python start_app.py --dev --no-browser
+```
+
+### Gate local
+
+O gate reproduzível usa o ambiente virtual, audita vulnerabilidades Python e npm,
+roda os testes e confirma o build do frontend:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r deps/requirements-dev.txt
+python tools/quality_gate.py
+```
+
+No Windows, use `.venv\Scripts\python.exe` no lugar de `.venv/bin/python`.
 
 ---
 
 ## 🖥️ Interface Web
 
 ```bash
-python start_app.py            # instala + builda + sobe + abre o navegador (http://127.0.0.1:8000)
-python start_app.py restart    # reinicia (libera a porta e sobe de novo)
-python start_app.py --dev      # desenvolvimento: backend com reload (:8000) + Vite (:5173)
-python start_app.py --no-browser   # sobe sem abrir o navegador (servidor/automação)
-python start_app.py --no-install   # pula a instalação de dependências
+python start_app.py            # menu Iniciar/Instalar/Configurar/Status/Sair
+python start_app.py restart    # compatibilidade: reinicia e libera a porta
+python start_app.py --dev      # compatibilidade: backend reload + Vite (:5173)
+python start_app.py --no-browser   # compatibilidade: sobe sem abrir navegador
+python start_app.py --no-install   # compatibilidade: pula a instalação
 ```
 
 Fluxo na interface: cole a URL do SoundCloud → escolha o que coletar → revise as faixas → escolha a pasta e o
 formato (FLAC/MP3) → acompanhe coleta e download em tempo real.
 
 > O backend também pode ser iniciado diretamente com `python run_web.py` (launcher simples, usado também no
-> empacotamento). O `start_app.py` é o caminho recomendado por instalar dependências e buildar o frontend.
+> empacotamento). O `start_app.py` é o caminho recomendado para preparar dependências, configurar e buildar o frontend.
 
 ---
 
@@ -125,11 +148,13 @@ SoundScraper/
 ├── core/                          # 🧠 Núcleo reutilizável (CLI + lógica de coleta/download)
 │   ├── soundcloud_track_scraper.py     # CLI de coleta de links
 │   ├── soundcloud_tracks_downloader.py # CLI de download (yt-dlp + FFmpeg)
-│   ├── browser_handler.py              # WebDriver (fallback) + I/O da API v2
+│   ├── browser_handler.py              # Fachada WebDriver + compatibilidade HTTP
 │   ├── crash_logger.py                 # crash log + log de sessão
 │   ├── platform_utils.py               # helpers cross-platform (FFmpeg, abrir pasta)
+│   ├── downloading/                    # opções/metadados compartilhados por CLI e Web
 │   └── scraping/                       # 🔍 Pipeline de coleta (DTO + adapters + registry)
 │       ├── models.py · config.py · parsers.py · registry.py · base.py · pipeline.py
+│       ├── cli.py · legacy_http.py
 │       └── adapters/  http_api.py (preferido) · selenium_browser.py (fallback)
 │
 ├── backend/                       # 🌐 API FastAPI + WebSocket
@@ -146,13 +171,13 @@ SoundScraper/
 │   └── ffmpeg/                          # FFmpeg do Windows (opcional; ver Requisitos)
 │
 ├── tools/                         # 🏗️ Build do executável
-│   ├── build_exe.py · soundcloud_tracks_downloader.spec · icon/
+│   ├── build_exe.py · build_ci.py · quality_gate.py · soundcloud_tracks_downloader.spec · icon/
 │
-├── tests/                         # 🧪 Suíte de testes (162 testes)
-├── start_app.py                   # ▶️ Inicialização padrão da Web (instala + builda + sobe + abre)
+├── tests/                         # 🧪 Suíte Python (181 testes offline)
+├── start_app.py                   # ▶️ Menu + launcher compatível com automação
 ├── run_cli.py                     # ⌨️ Entry point do modo CLI (coleta + download no terminal)
 ├── run_web.py                     # launcher simples do backend
-└── README.md · LICENSE · .gitignore
+└── README.md · IA.md · AGENTS.md · CLAUDE.md · pyproject.toml · LICENSE
 ```
 
 ### Pipeline de coleta (core/scraping/)
@@ -189,21 +214,29 @@ O backend (porta 8000) expõe:
 
 ## 🧪 Testes automatizados
 
-Suíte com **162 testes**, todos offline (sem rede ou acesso real ao SoundCloud — usam mocking e fixtures
-sanitizadas) e executando em segundos.
+Suíte com **181 testes Python** e **3 testes Node**. Os testes Python e de comportamento
+do frontend são offline (sem rede ou acesso real ao SoundCloud — usam mocking e fixtures
+sanitizadas); o gate também audita as dependências separadamente.
 
 ```bash
 pip install -r deps/requirements-dev.txt
 python -m pytest tests/ -v
+npm ci --prefix frontend
+npm run lint --prefix frontend
+npm test --prefix frontend
+npm run build --prefix frontend
 ```
 
 | Arquivo | Foco | Testes |
 |---|---|---|
 | `test_browser_handler.py` | WebDriver, I/O HTTP, client_id, rotas da API | 41 |
 | `test_scraper.py` | validação de URL, opções, scroll/collect, save TXT | 31 |
-| `test_crash_logger.py` | crash handler, SessionLogger, limpeza de logs | 31 |
+| `test_crash_logger.py` | crash handler, SessionLogger, limpeza de logs | 32 |
 | `test_downloader.py` | formato, correção de nomes, FFmpeg portável, .spec | 37 |
-| `test_scraping_pipeline.py` | parsers offline, registry, pipeline (fallback/fail-safe) | 22 |
+| `test_scraping_pipeline.py` | parsers offline, registry, pipeline (fallback/fail-safe) | 29 |
+| `test_start_app.py` | venv, configuração preservada, menu e flags legados | 6 |
+| `test_backend_validation.py` | contratos FastAPI, URLs e limites de entrada | 5 |
+| `frontend/tests/validation.test.js` | validação de URL e domínio | 3 |
 
 ---
 
@@ -217,8 +250,13 @@ Valida pré-requisitos (PyInstaller, módulos, FFmpeg, Selenium Manager, ícone)
 `.exe` em `dist/` com todas as dependências embutidas e abre a pasta ao concluir. O build empacota o núcleo
 (`core/`), o pacote `scraping/` e o FFmpeg do Windows.
 
-Em CI (`.github/workflows/build.yml`), o mesmo executável é gerado para **Linux e Windows** —
-`tools/build_ci.py`, reprodutível em runner limpo, sem paths absolutos locais.
+Em CI (`.github/workflows/build.yml`), um job de qualidade em **Linux e Windows** bloqueia
+os artefatos até passar Ruff, `pip-audit`, pytest, `npm ci`, ESLint, testes Node,
+`npm audit` e build Vite. Depois, o mesmo executável é gerado para **Linux e Windows** por
+`tools/build_ci.py`, reprodutível em runner limpo e sem paths absolutos locais.
+
+O CI não executa runner macOS; a compatibilidade do macOS é mantida no código e deve ser
+validada manualmente quando a mudança tocar FFmpeg, abertura de pastas ou navegador.
 
 ### Como publicar uma Release
 
@@ -260,8 +298,13 @@ não precisam ser corrigidas, mas toda tag nova segue o padrão acima.
 - **Google Chrome/Chromium** — **opcional**. Só é usado pelo fallback Selenium; a coleta via API v2 funciona
   sem navegador.
 
-Dependências Python (instaladas por `start_app.py` ou `pip install -r deps/requirements.txt`):
-`fastapi`, `uvicorn`, `websockets`, `yt-dlp`, `mutagen`, `selenium`, `webdriver_manager`.
+Dependências Python (instaladas por `start_app.py` ou `pip install -r deps/requirements.txt`)
+estão fixadas por versão. Para conferir vulnerabilidades:
+
+```bash
+.venv/bin/python -m pip_audit -r deps/requirements-dev.txt
+npm audit --prefix frontend --audit-level=high
+```
 
 ---
 

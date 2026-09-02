@@ -12,7 +12,7 @@ mexer aqui.
 | Item | O que é | Versionado no repo? |
 |---|---|---|
 | `requirements.txt` | Pacotes Python de **runtime** (CLI + Web app) | ✅ Sim |
-| `requirements-dev.txt` | Runtime **+** testes (`pytest`) e build (`pyinstaller`) | ✅ Sim |
+| `requirements-dev.txt` | Runtime **+** testes, Ruff, auditoria (`pip-audit`) e build | ✅ Sim |
 | `ffmpeg/` | Apenas o `LICENSE` do FFmpeg (exigido para redistribuir o binário) | ⚠️ Parcial — **o binário não** |
 
 > ⚠️ **O binário do FFmpeg não é versionado.** A pasta `ffmpeg/` guarda só a licença e a
@@ -64,11 +64,15 @@ O navegador é usado **apenas** pelo fallback de coleta via Selenium. A coleta p
 As dependências Python são instaladas automaticamente, mas você pode fazê-lo à mão:
 
 ```bash
-# Runtime (CLI + Web app)
-pip install -r deps/requirements.txt
+# Runtime (CLI + Web app), dentro do .venv
+.venv/bin/python -m pip install -r deps/requirements.txt
 
-# Desenvolvimento (runtime + testes + build)
-pip install -r deps/requirements-dev.txt
+# Desenvolvimento (runtime + testes + qualidade + build)
+.venv/bin/python -m pip install -r deps/requirements-dev.txt
+
+# Auditoria das versões fixadas
+.venv/bin/python -m pip_audit -r deps/requirements-dev.txt
+npm audit --prefix frontend --audit-level=high
 ```
 
 Para rodar o projeto, veja o [README principal](../README.md):

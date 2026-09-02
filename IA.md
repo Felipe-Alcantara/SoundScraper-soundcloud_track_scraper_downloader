@@ -154,6 +154,42 @@ que é um artefato real, não só um passo verde no Actions.
 navegador), Selenium como fallback; pipeline para de tentar no primeiro método com resultado. VALIDAÇÃO: testes
 de fallback/fail-safe em `test_scraping_pipeline.py`.
 
+## ✅ FECHAMENTO DO GATE — 2026-09-02
+
+[2026-09-02] BASELINE MEDIDO antes da execução: no checkout de `origin/main` foram reproduzidos 173 testes
+Python, 52 achados Ruff e frontend sem `node_modules`; o Python global não tinha Selenium/FastAPI. O baseline do
+briefing registrava 169 testes, então a contagem local foi mantida como evidência medida do checkout recebido.
+
+[2026-09-02] ESCOPO/DECISÃO: alinhamento ao Felixo System Design em branch `refactor/fecha-gate-felixo`. O
+repositório passou a ter `AGENTS.md`, `CLAUDE.md`, `pyproject.toml`, dependências Python pinadas, `ruff`,
+`pip-audit`, `tools/quality_gate.py` e um workflow que bloqueia artefatos Linux/Windows até o gate passar.
+`Padrão de qualidade - Felixo System Design/` foi sincronizado a partir da referência lida e continua ignorado;
+seu `.git` não foi mantido no checkout.
+
+[2026-09-02] ARQUITETURA: `browser_handler.py`, `soundcloud_track_scraper.py` e
+`soundcloud_tracks_downloader.py` foram reduzidos a fachadas compatíveis. HTTP legado, entrada do CLI,
+opções/metadados de download e validações de URL foram separados em módulos reutilizáveis. O registry das sete
+escolhas é a fonte única para nomes, sufixos, tipos da API e seletores.
+
+[2026-09-02] FRONTEND: adicionados ESLint flat config com plugin JSX, testes Node offline, validação de domínio,
+labels/ARIA/foco visível, mensagens de erro acessíveis e redução de movimento. `npm audit fix --package-lock-only`
+eliminou os 8 avisos encontrados na árvore inicial; o lockfile resultante fecha com 0 vulnerabilidades.
+
+[2026-09-02] LAUNCHER: `start_app.py` agora oferece `Iniciar`, `Instalar`, `Configurar`, `Status` e `Sair`, com
+cores ANSI respeitando `NO_COLOR`, `.env` não secreto preservando chaves desconhecidas e flags legados para
+automação. O executável congelado reconhece o bundle, encerra limpo em EOF e não tenta ler `/tmp/deps`.
+
+[2026-09-02] VALIDAÇÃO FINAL MEDIDA: `python tools/quality_gate.py` passou com Ruff limpo, `pip-audit` sem
+vulnerabilidades, 181 testes Python, `npm ci`, ESLint, 3 testes Node, Vite build e `npm audit --audit-level=high`.
+`tools/build_ci.py` gerou o binário Linux de 123,4 MB; o smoke `timeout 10s ./dist/soundcloud-downloader </dev/null`
+encerrou com código 0 e imprimiu o banner. O build Windows foi configurado no workflow, mas não foi executado
+localmente neste ambiente.
+
+[2026-09-02] LIMITAÇÕES/PENDÊNCIAS: não foi feito download real contra o SoundCloud, nem validação visual manual
+em navegador, Windows local ou macOS. O CI cobre Linux/Windows; macOS permanece validação manual. O npm ainda
+emite aviso de suporte encerrado para a série ESLint 9.39.5 porque o plugin JSX usado declara compatibilidade até
+ESLint 9; acompanhar atualização do plugin antes de migrar para ESLint 10.
+
 ---
 
 > **Origem do template**: Felixo System Design — https://github.com/Felipe-Alcantara/Felixo-System-Design
